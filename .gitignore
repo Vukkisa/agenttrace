@@ -1,0 +1,35 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tgz
+*.tsbuildinfo
+
+# AgentTrace cache and generated reports (may contain metadata from real sessions)
+.agenttrace/
+.agenttrace-cache/
+agenttrace-report-*.html
+/report.html
+/reports/
+
+# Real session logs must never be committed. Synthetic fixtures live in tests/fixtures/.
+/.claude/
+/.codex/
+/sessions/
+/real-data/
+/*.jsonl
+/*.jsonl.zst
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+auth.json
+.npmrc
+
+# Misc
+*.log
+.DS_Store
+tmp/

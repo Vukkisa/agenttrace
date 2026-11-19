@@ -1,0 +1,5 @@
+{"id":"0196aaaa-0000-7000-8000-000000000001","timestamp":"2025-04-20T08:00:00.000Z","instructions":""}
+{"type":"message","role":"user","content":[{"type":"input_text","text":"list files"}]}
+{"record_type":"state"}
+{"type":"function_call","name":"shell","arguments":"{\"command\":[\"ls\",\"-la\"]}","call_id":"c1"}
+{"type":"function_call_output","call_id":"c1","output":"{\"output\":\"x\",\"metadata\":{\"exit_code\":0,\"duration_seconds\":0.1}}"}

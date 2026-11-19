@@ -1,0 +1,42 @@
+{
+  "name": "agenttrace",
+  "version": "0.1.0",
+  "description": "Local-first analyzer for Claude Code and Codex session logs: tokens, API-equivalent cost, timing, repeated failures and possible loops.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "agenttrace": "dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "example": "npm run build && node dist/cli/index.js report --session 11111111 --claude-dir tests/fixtures/claude --codex-dir tests/fixtures/codex --out examples/example-report.html",
+    "fixtures": "node tests/fixtures/generate.mjs"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "ai-agents",
+    "observability",
+    "cli",
+    "tokens",
+    "cost"
+  ],
+  "dependencies": {
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

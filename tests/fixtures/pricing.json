@@ -1,0 +1,15 @@
+{
+  "models": [
+    {
+      "model": "omniroute/claude-sonnet",
+      "aliases": [],
+      "inputPerMTok": 2.5,
+      "outputPerMTok": 12,
+      "cacheReadPerMTok": 0.25,
+      "cacheWrite5mPerMTok": 3,
+      "cacheWrite1hPerMTok": 5,
+      "source": "Synthetic example price for tests (not a real provider price)",
+      "lastUpdated": "2026-11-19"
+    }
+  ]
+}

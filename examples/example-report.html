@@ -1,0 +1,135 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgentTrace Report</title><style>
+:root{--bg:#f7f7f5;--card:#fff;--fg:#1d1d1f;--muted:#6b6b70;--line:#e3e3e0;--accent:#3355cc;--ok:#2f8a4c;--err:#c8382e;--warn:#c27c0e;--loop:#8a4fd0;--pause:#d9d9d4;--code:#f1f1ee}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121214;--card:#1c1c1f;--fg:#ececee;--muted:#9a9aa2;--line:#2e2e33;--accent:#7f9bff;--ok:#5cc27e;--err:#ff6b5f;--warn:#e8a93b;--loop:#b88cff;--pause:#2f2f34;--code:#26262a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:1080px;margin:0 auto;padding:24px 16px 64px}h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:0 0 12px}h3{font-size:15px;margin:4px 0 8px}
+.sub{color:var(--muted);margin:0 0 20px;word-break:break-all}section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin:0 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px}.stat b{display:block;font-size:20px}.stat span{color:var(--muted);font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600}.num{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}.code,code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--code);padding:1px 4px;border-radius:4px;word-break:break-all}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:8px 0}.kv dt{color:var(--muted)}.kv dd{margin:0;word-break:break-word}
+.basis{font-size:11px;text-transform:uppercase;letter-spacing:.04em;border-radius:999px;padding:1px 8px;margin-left:8px;border:1px solid var(--line);color:var(--muted)}.basis-measured{color:var(--ok);border-color:var(--ok)}.basis-heuristic{color:var(--loop);border-color:var(--loop)}.basis-estimated{color:var(--warn);border-color:var(--warn)}
+.finding{border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:8px;padding:12px 14px;margin:0 0 12px}.finding.sev-high{border-left-color:var(--err)}.finding.sev-low{border-left-color:var(--muted)}
+.flabel{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--err)}.sev-low .flabel{color:var(--muted)}
+.st-error{color:var(--err)}.st-success{color:var(--ok)}.st-interrupted{color:var(--warn)}.snip{color:var(--muted);font-family:ui-monospace,monospace;font-size:11px}
+.muted{color:var(--muted)}.note{font-size:12px;color:var(--muted)}ul.diag{padding-left:18px;margin:0}ul.diag li{margin:4px 0}
+.bar-row{display:grid;grid-template-columns:minmax(120px,240px) 1fr 110px;gap:10px;align-items:center;margin:4px 0}.bar-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bar-track{height:10px;background:var(--code);border-radius:5px;overflow:hidden}.bar-fill{display:block;height:100%;background:var(--accent)}.bar-fill.err{background:var(--err)}.bar-val{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.timeline{width:100%;height:120px;display:block;background:var(--code);border-radius:6px}.tl-lab{font-size:9px;fill:var(--muted)}.tl-user{stroke:var(--accent);stroke-width:2}.tl-end{stroke:var(--muted);stroke-width:1}.tl-err{fill:var(--err)}.tl-compact{fill:var(--warn)}
+.tl-tool{fill:var(--ok);opacity:.7}.tl-tool-err{fill:var(--err)}.tl-tool-int{fill:var(--warn)}.tl-pause{fill:var(--pause);opacity:.8}.tl-span.fail{fill:var(--err);opacity:.45}.tl-span.loop{fill:var(--loop);opacity:.55}
+.tl-axis{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:4px}.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:8px}.lg{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.lg.user{background:var(--accent)}.lg.tool{background:var(--ok)}.lg.err{background:var(--err)}.lg.fail{background:var(--err);opacity:.45}.lg.loop{background:var(--loop)}.lg.pause{background:var(--pause)}
+details summary{cursor:pointer;color:var(--accent)}footer{color:var(--muted);font-size:12px;margin-top:24px}
+@media (max-width:600px){.bar-row{grid-template-columns:100px 1fr 80px}}
+</style></head><body><main>
+<h1>AgentTrace session report</h1>
+<p class="sub">claude-code · 11111111-1111-4111-8111-111111111111 · /home/dev/demo-app</p>
+
+<section><h2>Session overview</h2>
+<div class="grid">
+<div class="stat"><b>30m 30s</b><span>Observed duration <span class="basis basis-measured">measured</span></span></div>
+<div class="stat"><b>15m 0s</b><span>Excl. pauses &gt; 5m 0s</span></div>
+<div class="stat"><b>$0.09</b><span>API-equivalent cost <span class="basis basis-estimated">estimated</span></span></div>
+<div class="stat"><b>14</b><span>Tool calls</span></div>
+<div class="stat"><b>5</b><span>Failed tool calls</span></div>
+<div class="stat"><b>4</b><span>Findings</span></div>
+</div>
+<dl class="kv"><dt>Agent</dt><dd>claude-code <span class="muted">v2.1.0</span></dd><dt>Session ID</dt><dd><code>11111111-1111-4111-8111-111111111111</code></dd><dt>Model(s)</dt><dd>claude-sonnet-5-5, claude-opus-5-5, claude-haiku-5-5</dd><dt>Start</dt><dd>11/19/2026, 4:00:00 PM</dd><dt>End</dt><dd>11/19/2026, 4:30:30 PM</dd><dt>Git branch</dt><dd>feature/auth</dd><dt>Turns</dt><dd>2 user prompt(s), 1 completed assistant turn(s), 0 interruption(s), 1 API error(s), 0 compaction(s)</dd></dl>
+</section>
+
+<section><h2>Final diagnosis</h2><ul class="diag"><li><span class="basis basis-measured">measured</span> 14 tool call(s) recorded; 5 returned an error and 1 were interrupted.</li><li><span class="basis basis-measured">measured</span> 5 failed runs of the same test command were detected (pytest tests/test_auth.py), spanning about 9m 30s from first to last attempt. It later succeeded.</li><li><span class="basis basis-heuristic">heuristic</span> Possible repetitive behaviour: same bash call repeated 3 times in a row (Bash: pytest tests/test_auth.py), spanning about 4m 30s from first to last attempt.</li><li><span class="basis basis-heuristic">heuristic</span> 1 file(s) were read 3+ times with no recorded change in between (may be legitimate).</li><li><span class="basis basis-estimated">estimated</span> About 9m 30s of the session falls inside repeated-failure periods (back-to-back repeated attempts, gaps ≤ 10m 0s).</li><li><span class="basis basis-estimated">estimated</span> Estimated API-equivalent cost: $0.09.</li><li><span class="basis basis-measured">measured</span> 1 pause(s) longer than 5m 0s totalling 15m 30s.</li></ul>
+<p class="note">measured = counted directly from log events · estimated = derived from timestamps or prices · heuristic = pattern-based; not proof of agent intent.</p></section>
+
+<section><h2>Token usage</h2>
+<div class="tablewrap"><table><thead><tr><th>Model</th><th class="num">Input (uncached)</th><th class="num">Output</th><th class="num">Cache read</th><th class="num">Cache write</th><th class="num">API-equiv. cost</th></tr></thead>
+<tbody><tr><td>claude-sonnet-5-5</td><td class="num">71</td><td class="num">490</td><td class="num">392,700</td><td class="num">7,000</td><td class="num">$0.06</td></tr><tr><td>claude-opus-5-5</td><td class="num">5</td><td class="num">300</td><td class="num">30,000</td><td class="num">2,000</td><td class="num">$0.02</td></tr><tr><td>claude-haiku-5-5</td><td class="num">3</td><td class="num">25</td><td class="num">1,000</td><td class="num">500</td><td class="num">&lt;$0.01</td></tr><tr><td>Total</td><td class="num">79</td><td class="num">815</td><td class="num">423,700</td><td class="num">9,500</td><td class="num">$0.09</td></tr></tbody></table></div>
+<p class="note">Includes subagent usage: 1,528 tokens.</p>
+
+<p class="note">Usage derivation: per-message. Claude Code writes one record per content block; usage is de-duplicated by message ID.</p>
+</section>
+
+<section><h2>Activity timeline</h2><svg class="timeline" viewBox="0 0 1000 120" preserveAspectRatio="none" role="img" aria-label="Session activity timeline">
+<text class="tl-lab" x="2" y="34">turns</text><text class="tl-lab" x="2" y="52">tools</text><text class="tl-lab" x="2" y="70">failed</text><text class="tl-lab" x="2" y="100">repeated</text>
+<rect class="tl-pause" x="475.4" y="0" width="508.2" height="120"><title>Pause 15m 30s</title></rect>
+<rect class="tl-span fail" x="65.6" y="78" width="311.5" height="10"><title>Same test command failed repeatedly: pytest tests/test_auth.py</title></rect>
+<rect class="tl-span loop" x="65.6" y="78" width="147.5" height="10"><title>Same Bash call repeated 3 times in a row: Bash: pytest tests/test_auth.py</title></rect>
+<rect class="tl-span loop" x="65.6" y="78" width="147.5" height="10"><title>Failing test re-run without code changes: pytest tests/test_auth.py</title></rect>
+<line class="tl-user" x1="0.0" x2="0.0" y1="0" y2="24"><title>User prompt Nov 19, 04:00:00 PM</title></line>
+<rect class="tl-tool" x="10.9" y="40" width="2" height="14"><title>Read success Nov 19, 04:00:20 PM</title></rect>
+<rect class="tl-tool" x="32.8" y="40" width="2" height="14"><title>Read success Nov 19, 04:01:00 PM</title></rect>
+<rect class="tl-tool-err" x="65.6" y="58" width="2" height="14"><title>Bash error Nov 19, 04:02:00 PM</title></rect>
+<rect class="tl-tool-err" x="131.1" y="58" width="2" height="14"><title>Bash error Nov 19, 04:04:00 PM</title></rect>
+<rect class="tl-tool-err" x="196.7" y="58" width="2" height="14"><title>Bash error Nov 19, 04:06:00 PM</title></rect>
+<rect class="tl-tool" x="229.5" y="40" width="2" height="14"><title>Edit success Nov 19, 04:07:00 PM</title></rect>
+<rect class="tl-tool-err" x="295.1" y="58" width="2" height="14"><title>Bash error Nov 19, 04:09:00 PM</title></rect>
+<rect class="tl-tool-err" x="360.7" y="58" width="2" height="14"><title>Bash error Nov 19, 04:11:00 PM</title></rect>
+<rect class="tl-tool" x="393.4" y="40" width="2" height="14"><title>Read success Nov 19, 04:12:00 PM</title></rect>
+<rect class="tl-tool" x="409.8" y="40" width="2" height="14"><title>Read success Nov 19, 04:12:30 PM</title></rect>
+<rect class="tl-tool" x="418.0" y="40" width="2" height="14"><title>Read success Nov 19, 04:12:45 PM</title></rect>
+<rect class="tl-tool" x="426.2" y="40" width="2" height="14"><title>Bash success Nov 19, 04:13:00 PM</title></rect>
+<circle class="tl-err" cx="448.1" cy="12" r="4"><title>api-error Nov 19, 04:13:40 PM</title></circle>
+<rect class="tl-tool-int" x="459.0" y="40" width="2" height="14"><title>Bash interrupted Nov 19, 04:14:00 PM</title></rect>
+<line class="tl-user" x1="983.6" x2="983.6" y1="0" y2="24"><title>User prompt Nov 19, 04:30:00 PM</title></line>
+<line class="tl-end" x1="1000.0" x2="1000.0" y1="4" y2="20"><title>Assistant turn ended Nov 19, 04:30:30 PM</title></line></svg>
+<div class="tl-axis"><span>Nov 19, 04:00:00 PM</span><span>Nov 19, 04:30:30 PM</span></div>
+<div class="legend"><span><i class="lg user"></i>user prompt</span><span><i class="lg tool"></i>tool call</span><span><i class="lg err"></i>failed call / error</span><span><i class="lg fail"></i>repeated failure span</span><span><i class="lg loop"></i>possible loop span</span><span><i class="lg pause"></i>pause</span></div></section>
+
+<section><h2>Failure analysis</h2>
+<article class="finding sev-medium">
+  <header><span class="flabel">REPEATED FAILURE DETECTED</span><span class="basis basis-measured">measured</span><h3>Same test command failed repeatedly</h3></header>
+  <dl class="kv"><dt>Subject</dt><dd><code>pytest tests/test_auth.py</code></dd><dt>Occurrences</dt><dd>6 (5 failed)</dd><dt>Time range</dt><dd>Nov 19, 04:02:00 PM – Nov 19, 04:11:30 PM (9m 30s)</dd><dt>Tools</dt><dd>Bash</dd><dt>Later success</dt><dd>yes</dd><dt>File changes in between</dt><dd>1</dd></dl>
+  <p><strong>Why flagged:</strong> The normalized command ran 6 time(s) and returned an error 5 time(s); 1 file modification(s) were recorded in between.</p>
+  <p><strong>Recommendation:</strong> Inspect the original test failure output before re-running the same test again.</p>
+  <details><summary>Evidence (5 of 6 events)</summary>
+  <table class="ev"><thead><tr><th>Time</th><th>Tool</th><th>Input (redacted)</th><th>Result</th><th>Error class</th></tr></thead><tbody><tr><td>Nov 19, 04:02:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr><tr><td>Nov 19, 04:04:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr><tr><td>Nov 19, 04:06:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr><tr><td>Nov 19, 04:09:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr><tr><td>Nov 19, 04:11:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr></tbody></table></details>
+</article>
+<h3>Failed calls by tool</h3><div class="bar-row"><span class="bar-label">Bash</span><span class="bar-track"><span class="bar-fill err" style="width:100.0%"></span></span><span class="bar-val">5 failed</span></div>
+<details><summary>All failed tool calls (5)</summary><div class="tablewrap"><table><thead><tr><th>Time</th><th>Tool</th><th>Input (redacted)</th><th>Exit</th><th>Error class</th></tr></thead><tbody><tr><td>Nov 19, 04:02:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td>1</td><td>test-failure</td></tr><tr><td>Nov 19, 04:04:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td>1</td><td>test-failure</td></tr><tr><td>Nov 19, 04:06:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td>1</td><td>test-failure</td></tr><tr><td>Nov 19, 04:09:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td>1</td><td>test-failure</td></tr><tr><td>Nov 19, 04:11:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td>1</td><td>test-failure</td></tr></tbody></table></div></details>
+</section>
+
+<section><h2>Possible repetitive behaviour</h2>
+<article class="finding sev-high">
+  <header><span class="flabel">Possible repetitive behaviour</span><span class="basis basis-heuristic">heuristic</span><h3>Same Bash call repeated 3 times in a row</h3></header>
+  <dl class="kv"><dt>Subject</dt><dd><code>Bash: pytest tests/test_auth.py</code></dd><dt>Occurrences</dt><dd>3 (3 failed)</dd><dt>Time range</dt><dd>Nov 19, 04:02:00 PM – Nov 19, 04:06:30 PM (4m 30s)</dd><dt>Tools</dt><dd>Bash</dd></dl>
+  <p><strong>Why flagged:</strong> The same call (identical tool, normalized input and outcome, including the same error) occurred 3 times consecutively, with no different tool call in between. The logs show no visible progress between repetitions.</p>
+  <p><strong>Recommendation:</strong> Repeating the same failing step is unlikely to succeed; check the error and change approach.</p>
+  <details><summary>Evidence (3 of 3 events)</summary>
+  <table class="ev"><thead><tr><th>Time</th><th>Tool</th><th>Input (redacted)</th><th>Result</th><th>Error class</th></tr></thead><tbody><tr><td>Nov 19, 04:02:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr><tr><td>Nov 19, 04:04:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr><tr><td>Nov 19, 04:06:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr></tbody></table></details>
+</article><article class="finding sev-high">
+  <header><span class="flabel">Possible repetitive behaviour</span><span class="basis basis-heuristic">heuristic</span><h3>Failing test re-run without code changes</h3></header>
+  <dl class="kv"><dt>Subject</dt><dd><code>pytest tests/test_auth.py</code></dd><dt>Occurrences</dt><dd>3 (3 failed)</dd><dt>Time range</dt><dd>Nov 19, 04:02:00 PM – Nov 19, 04:06:30 PM (4m 30s)</dd><dt>Tools</dt><dd>Bash</dd><dt>File changes in between</dt><dd>0</dd></dl>
+  <p><strong>Why flagged:</strong> 3 consecutive failed runs of the same command with no Edit/Write/patch recorded between them. Changes made outside the agent&#39;s tools (or via shell commands) are not visible in the logs.</p>
+  <p><strong>Recommendation:</strong> Inspect the original failure before retrying the same test again.</p>
+  <details><summary>Evidence (3 of 3 events)</summary>
+  <table class="ev"><thead><tr><th>Time</th><th>Tool</th><th>Input (redacted)</th><th>Result</th><th>Error class</th></tr></thead><tbody><tr><td>Nov 19, 04:02:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr><tr><td>Nov 19, 04:04:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr><tr><td>Nov 19, 04:06:00 PM</td><td>Bash</td><td class="code">pytest tests/test_auth.py</td><td class="st-error">error (exit 1)</td><td>test-failure</td></tr></tbody></table></details>
+</article>
+<h3>Repeated operations (may be legitimate)</h3><article class="finding sev-low">
+  <header><span class="flabel">Repeated operation</span><span class="basis basis-heuristic">heuristic</span><h3>Same file read repeatedly without changes</h3></header>
+  <dl class="kv"><dt>Subject</dt><dd><code>/home/dev/demo-app/src/auth.py</code></dd><dt>Occurrences</dt><dd>5</dd><dt>Time range</dt><dd>Nov 19, 04:12:00 PM – Nov 19, 04:12:46 PM (46s)</dd><dt>Tools</dt><dd>Read</dd></dl>
+  <p><strong>Why flagged:</strong> 3 identical reads of this file with no recorded modification of it (and no context compaction) between them; 2 other read(s) followed a change and are not counted.</p>
+  <p><strong>Recommendation:</strong> This may be legitimate (e.g. re-checking after a subagent or external change). If not, it is redundant context usage.</p>
+  <details><summary>Evidence (3 of 5 events)</summary>
+  <table class="ev"><thead><tr><th>Time</th><th>Tool</th><th>Input (redacted)</th><th>Result</th><th>Error class</th></tr></thead><tbody><tr><td>Nov 19, 04:12:00 PM</td><td>Read</td><td class="code">/home/dev/demo-app/src/auth.py</td><td class="st-success">success</td><td></td></tr><tr><td>Nov 19, 04:12:30 PM</td><td>Read</td><td class="code">/home/dev/demo-app/src/auth.py</td><td class="st-success">success</td><td></td></tr><tr><td>Nov 19, 04:12:45 PM</td><td>Read</td><td class="code">/home/dev/demo-app/src/auth.py</td><td class="st-success">success</td><td></td></tr></tbody></table></details>
+</article>
+<p class="note">These are patterns in the logs, not proof that the agent was stuck. Changes made outside the agent's own tools are not visible.</p>
+</section>
+
+<section><h2>Cost and time analysis</h2>
+<h3>Tool activity</h3><div class="bar-row"><span class="bar-label">Bash</span><span class="bar-track"><span class="bar-fill " style="width:100.0%"></span></span><span class="bar-val">7 · 5 failed</span></div><div class="bar-row"><span class="bar-label">Read</span><span class="bar-track"><span class="bar-fill " style="width:71.4%"></span></span><span class="bar-val">5</span></div><div class="bar-row"><span class="bar-label">Grep</span><span class="bar-track"><span class="bar-fill " style="width:14.3%"></span></span><span class="bar-val">1</span></div><div class="bar-row"><span class="bar-label">Edit</span><span class="bar-track"><span class="bar-fill " style="width:14.3%"></span></span><span class="bar-val">1</span></div>
+<h3>Time breakdown <span class="basis basis-estimated">estimated</span></h3><div class="bar-row"><span class="bar-label">Long pauses</span><span class="bar-track"><span class="bar-fill " style="width:100.0%"></span></span><span class="bar-val">15m 30s</span></div><div class="bar-row"><span class="bar-label">Agent/model processing</span><span class="bar-track"><span class="bar-fill " style="width:74.2%"></span></span><span class="bar-val">11m 30s</span></div><div class="bar-row"><span class="bar-label">Tool execution (call→result interval)</span><span class="bar-track"><span class="bar-fill " style="width:22.6%"></span></span><span class="bar-val">3m 30s</span></div>
+<p class="note">Gaps between consecutive log events are attributed to the activity in progress. Tool time includes approval waits.</p>
+<h3>Tool duration</h3><div class="tablewrap"><table><thead><tr><th>Tool</th><th class="num">Calls</th><th class="num">Measured by agent</th><th class="num">Call→result interval</th></tr></thead><tbody><tr><td>Bash</td><td class="num">7</td><td class="num">—</td><td class="num">3m 20s <span class="muted">(7)</span></td></tr><tr><td>Read</td><td class="num">5</td><td class="num">—</td><td class="num">5s <span class="muted">(5)</span></td></tr><tr><td>Edit</td><td class="num">1</td><td class="num">—</td><td class="num">5s <span class="muted">(1)</span></td></tr><tr><td>Grep</td><td class="num">1</td><td class="num">—</td><td class="num">2s <span class="muted">(1)</span></td></tr></tbody></table></div>
+<h3>Main sources of inefficiency</h3>
+<ul class="diag"><li><span class="basis basis-estimated">estimated</span> 9m 30s inside repeated-failure / loop periods (first to last repeated attempt).</li><li><span class="basis basis-measured">measured</span> 12 tool calls belong to repeated patterns.</li><li><span class="basis basis-measured">measured</span> 1 long pause(s): 15m 30s.</li></ul>
+<p class="note">API-equivalent cost estimates what these tokens would cost at public API list prices. It is not your actual bill: subscription plans (e.g. Claude Pro/Max, ChatGPT plans) are not billed per token, and provider billing may differ (discounts, batch/priority tiers, regional pricing, rounding).</p>
+<details><summary>Pricing used</summary><div class="tablewrap"><table><thead><tr><th>Model</th><th class="num">Input $/M</th><th class="num">Output $/M</th><th class="num">Cache read $/M</th><th class="num">Cache write 5m / 1h $/M</th><th>Source</th><th>Updated</th></tr></thead><tbody><tr><td>claude-sonnet-5-5</td><td class="num">2</td><td class="num">10</td><td class="num">0.1</td><td class="num">2.5 / 4</td><td>Anthropic API pricing (claude-api reference, cached 2026-11-03)<div class="snip">cache write prices derived from documented multipliers (5m = 1.25x input, 1h = 2x input)</div></td><td>2026-11-03</td></tr><tr><td>claude-opus-5-5</td><td class="num">4</td><td class="num">20</td><td class="num">0.2</td><td class="num">5 / 8</td><td>Anthropic API pricing (claude-api reference, cached 2026-11-03)<div class="snip">cache write prices derived from documented multipliers (5m = 1.25x input, 1h = 2x input)</div></td><td>2026-11-03</td></tr><tr><td>claude-haiku-5-5</td><td class="num">0.1</td><td class="num">0.5</td><td class="num">0.01</td><td class="num">0.125 / 0.2</td><td>Anthropic API pricing (claude-api reference, cached 2026-11-03)<div class="snip">cache read derived (0.1x input); cache write prices derived from documented multipliers (5m = 1.25x input, 1h = 2x input)</div></td><td>2026-11-03</td></tr></tbody></table></div></details>
+
+</section>
+
+<section><h2>Parser diagnostics</h2>
+<p class="note">2 file(s) parsed, 36 records.</p>
+<ul class="diag"><li>2 malformed line(s)</li><li>1× unsupported record &quot;future-record-type&quot;</li><li>last line is not valid JSON (file may still be being written)</li></ul>
+</section>
+
+<footer>Generated by AgentTrace 0.1.0 on 11/19/2026, 1:20:14 PM. Generated locally; no data left this machine. Contains no prompts or tool outputs.</footer>
+</main></body></html>

@@ -127,4 +127,26 @@ write('codex/sessions/2025/04/20/rollout-2025-04-20T08-00-00-0196aaaa-0000-7000-
   { type: 'function_call_output', call_id: 'c1', output: JSON.stringify({ output: 'x', metadata: { exit_code: 0, duration_seconds: 0.1 } }) },
 ]);
 
+// ---------------- Codex 0.45 VS Code / app-server style (structure mirrors a real rollout) ----------------
+// Injected <environment_context> user-role messages must not count as prompts; the turn that only
+// carried injected context has no real prompt; UserMessage items arrive as event_msg:item_completed.
+{
+  const id = '0199bbbb-0000-7000-8000-000000000045';
+  const t = s => `2026-11-18T09:00:${s}Z`;
+  const env = { type: 'input_text', text: '<environment_context>\n  <cwd>/home/dev/web</cwd>\n</environment_context>' };
+  write(`codex/sessions/2026/11/18/rollout-2026-11-18T09-00-00-${id}.jsonl`, [
+    { timestamp: t('00.000'), type: 'session_meta', payload: { session_id: id, id, timestamp: t('00.000'), cwd: '/home/dev/web', originator: 'codex_vscode', cli_version: '0.45.0-alpha.5', source: 'vscode', model_provider: 'openai', history_mode: 'full' } },
+    { timestamp: t('00.010'), type: 'response_item', payload: { type: 'message', role: 'user', content: [env] } },
+    { timestamp: t('00.020'), type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: '<user_instructions>\nbe brief\n</user_instructions>' }] } },
+    { timestamp: t('00.030'), type: 'event_msg', payload: { type: 'task_started', turn_id: 'turn-1', started_at: 1763456400, model_context_window: 272000 } },
+    { timestamp: t('00.040'), type: 'event_msg', payload: { type: 'item_completed', thread_id: id, turn_id: 'turn-1', item: { type: 'UserMessage', id: 'item-1', content: [{ type: 'text', text: env.text, text_elements: [] }] }, completed_at_ms: 1763456400040 } },
+    { timestamp: t('00.050'), type: 'event_msg', payload: { type: 'task_complete', turn_id: 'turn-1', last_agent_message: null, completed_at: 1763456400 } },
+    { timestamp: t('01.000'), type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'add a dark mode toggle' }] } },
+    { timestamp: t('01.010'), type: 'event_msg', payload: { type: 'task_started', turn_id: 'turn-2', started_at: 1763456401, model_context_window: 272000 } },
+    { timestamp: t('01.020'), type: 'event_msg', payload: { type: 'item_completed', thread_id: id, turn_id: 'turn-2', item: { type: 'UserMessage', id: 'item-2', content: [{ type: 'text', text: 'add a dark mode toggle', text_elements: [] }] }, completed_at_ms: 1763456401020 } },
+    { timestamp: t('01.030'), type: 'turn_context', payload: { cwd: '/home/dev/web', approval_policy: 'on-request', model: 'gpt-5-codex', effort: 'medium', summary: 'auto' } },
+    { timestamp: t('01.040'), type: 'event_msg', payload: { type: 'task_complete', turn_id: 'turn-2', last_agent_message: null, completed_at: 1763456401 } },
+  ]);
+}
+
 console.log('fixtures written');

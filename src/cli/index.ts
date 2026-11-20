@@ -7,24 +7,29 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Command, Option } from 'commander';
 import { discover, findSession, loadSession, type DiscoveryOptions } from '../discovery/index.js';
-import { analyzeSession, summarizeMany, type SessionAnalysis } from '../analytics/analyze.js';
+import { analyzeSession } from '../analytics/analyze.js';
 import { loadPricing, pricingTemplate, USER_PRICING_FILE, type PricingTable } from '../pricing/index.js';
 import { renderMultiText, renderSessionText } from '../reports/text.js';
 import { renderSessionHtml } from '../reports/html.js';
 import { formatDuration } from '../analytics/timing/index.js';
 import type { AgentName, SessionRef } from '../types.js';
+import { summarizeSummaries, type SessionSummary } from '../analytics/summary.js';
+import { collectSummaries } from '../cache/collect.js';
+import { SummaryCache, cacheInfo, clearCache, defaultCacheDir, type CacheStats } from '../cache/index.js';
+import { VERSION } from '../version.js';
 
-interface GlobalOpts { claudeDir?: string; codexDir?: string; pricing?: string; agent?: string }
+interface GlobalOpts { claudeDir?: string; codexDir?: string; pricing?: string; agent?: string; cache?: boolean }
 
 const program = new Command();
 program
   .name('agenttrace')
   .description('Analyze local Claude Code and Codex session logs (read-only, offline).')
-  .version('0.1.0')
+  .version(VERSION)
   .option('--claude-dir <path>', 'Claude Code config dir (or its projects/ dir). Default: $CLAUDE_CONFIG_DIR, ~/.claude, ~/.config/claude')
   .option('--codex-dir <path>', 'Codex home (or its sessions/ dir). Default: $CODEX_HOME or ~/.codex')
   .option('--pricing <file>', `Extra model prices (JSON). ${USER_PRICING_FILE} is also read if present.`)
-  .addOption(new Option('--agent <name>', 'Only one agent').choices(['claude-code', 'codex']));
+  .addOption(new Option('--agent <name>', 'Only one agent').choices(['claude-code', 'codex']))
+  .option('--no-cache', 'Do not read or write the local summary cache (always re-parse)');
 
 function g(): GlobalOpts { return program.opts<GlobalOpts>(); }
 function discOpts(): DiscoveryOptions {
@@ -48,6 +53,20 @@ function pickRef(o: { session?: string; latest?: boolean }): SessionRef {
   if (o.session) return findSession(sessions, o.session);
   if (o.latest) return sessions[0];
   throw new Error('Specify --session <id> or --latest.');
+}
+
+type DetectionOpts = ReturnType<typeof detectionOpts>;
+
+async function summaries(refs: SessionRef[], det: DetectionOpts, requireDetection: boolean): Promise<{ summaries: SessionSummary[]; stats: CacheStats; enabled: boolean }> {
+  const cache = SummaryCache.open({ enabled: g().cache !== false });
+  if (cache.note) console.error(`agenttrace: ${cache.note}`);
+  const list = await collectSummaries(refs, { cache, detection: det, requireDetection, pricing, warn: m => console.error(m) });
+  return { summaries: list, stats: cache.stats, enabled: cache.enabled };
+}
+
+function cacheLine(r: { stats: CacheStats; enabled: boolean }): string {
+  if (!r.enabled) return 'cache: disabled (--no-cache); all sessions parsed';
+  return `cache: ${r.stats.reused} reused, ${r.stats.parsed} parsed (new or changed)`;
 }
 
 const detectionFlags = (cmd: Command) => cmd
@@ -74,16 +93,14 @@ program.command('sessions')
   .option('--json', 'JSON output')
   .action(async (o: { limit: string; json?: boolean }) => {
     const refs = discover(discOpts()).sessions.slice(0, Number(o.limit) || 30);
-    const rows = [];
-    for (const ref of refs) {
-      const s = await loadSession(ref);
-      rows.push({ agent: s.agent, sessionId: s.sessionId, start: s.startTime, durationMs: s.startTime && s.endTime ? s.endTime.getTime() - s.startTime.getTime() : undefined, models: s.models, project: s.projectDir, toolCalls: s.toolCalls.length, files: s.files.length });
-    }
+    const res = await summaries(refs, detectionOpts({}), false);
+    const rows = res.summaries.map(s => ({ agent: s.agent, sessionId: s.sessionId, start: s.start, durationMs: s.observedMs, models: s.models, project: s.projectDir, toolCalls: s.toolCalls, files: s.files }));
     if (o.json) { console.log(json(rows)); return; }
     if (!rows.length) { console.log('No sessions found.'); return; }
     for (const r of rows) {
       console.log(`${r.agent.padEnd(11)} ${r.sessionId}  ${(r.start ? r.start.toLocaleString() : '?').padEnd(22)} ${formatDuration(r.durationMs).padEnd(9)} ${(r.models.join(',') || '-').padEnd(24)} ${r.toolCalls} calls`);
     }
+    console.error(cacheLine(res));
   });
 
 detectionFlags(program.command('analyze')
@@ -96,14 +113,10 @@ detectionFlags(program.command('analyze')
     const det = detectionOpts(o);
     const table = pricing();
     if (o.all) {
-      const refs = discover(discOpts()).sessions;
-      const analyses: SessionAnalysis[] = [];
-      for (const ref of refs) {
-        try { analyses.push(analyzeSession(await loadSession(ref), table, det)); }
-        catch (e) { console.error(`warning: could not analyze ${ref.agent} ${ref.sessionId}: ${(e as Error).message}`); }
-      }
-      const m = summarizeMany(analyses, table);
+      const res = await summaries(discover(discOpts()).sessions, det, true);
+      const m = summarizeSummaries(res.summaries, table);
       console.log(o.json ? json(m) : renderMultiText(m));
+      if (!o.json) console.error(cacheLine(res));
       return;
     }
     const a = analyzeSession(await loadSession(pickRef(o)), table, det);
@@ -121,6 +134,25 @@ detectionFlags(program.command('report')
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, renderSessionHtml(a), { mode: 0o600 });
     console.log(`Report written: ${out}`);
+  });
+
+const cacheCmd = program.command('cache').description('Inspect or clear the local summary cache');
+cacheCmd.command('info')
+  .description('Show cache location and size')
+  .option('--json', 'JSON output')
+  .action((o: { json?: boolean }) => {
+    const i = cacheInfo();
+    if (o.json) { console.log(json(i)); return; }
+    console.log(`Cache file: ${i.file}`);
+    if (!i.exists) { console.log('Status:     empty (no cache file)'); return; }
+    console.log(`Entries:    ${i.entries}\nSize:       ${((i.bytes ?? 0) / 1024).toFixed(1)} KB`);
+    if (i.note) console.log(`Note:       ${i.note}`);
+    console.log('Contents:   per-session counts, token totals, timing and file size/mtime only (no transcript text).');
+  });
+cacheCmd.command('clear')
+  .description('Delete the cache file')
+  .action(() => {
+    console.log(clearCache() ? `Cache cleared: ${defaultCacheDir()}` : 'No cache to clear.');
   });
 
 program.command('reports-clean')

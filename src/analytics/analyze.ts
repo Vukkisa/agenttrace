@@ -9,6 +9,7 @@ import { summarizeCost, type CostSummary, formatUsd } from './costs/index.js';
 import { analyzeTiming, type TimingSummary, formatDuration } from './timing/index.js';
 import { detectFailures } from './failures/index.js';
 import { detectLoops } from './loops/index.js';
+import { toSummary, summarizeSummaries, type MultiSummary } from './summary.js';
 import { DEFAULT_DETECTION, type DetectionConfig, type Finding, evidenceOf, type EvidenceItem } from './findings.js';
 
 export interface ToolStats { tool: string; calls: number; errors: number; interrupted: number; unknown: number }
@@ -155,30 +156,9 @@ export function analyzeSession(s: NormalizedSession, pricing: PricingTable, cfg:
   return { ...base, diagnosis: diagnose(base) };
 }
 
-export interface MultiSummary {
-  sessions: { agent: AgentName; sessionId: string; start?: Date; durationMs?: number; models: string[]; tokens: TokenTotals; costUsd?: number; costStatus: string; toolCalls: number; failed: number; findings: number; loops: number }[];
-  total: TokenTotals;
-  byModel: Record<string, TokenTotals>;
-  byDay: Record<string, TokenTotals>;
-  cost: CostSummary;
-}
+export type { MultiSummary } from './summary.js';
 
+/** Aggregate full analyses. Thin wrapper over summarizeSummaries (kept for API compatibility). */
 export function summarizeMany(analyses: SessionAnalysis[], pricing: PricingTable): MultiSummary {
-  let total = emptyTotals();
-  const byModel: Record<string, TokenTotals> = {};
-  const byDay: Record<string, TokenTotals> = {};
-  for (const a of analyses) {
-    total = mergeTotals(total, a.tokens.total);
-    for (const [m, t] of Object.entries(a.tokens.byModel)) byModel[m] = mergeTotals(byModel[m] ?? emptyTotals(), t);
-    for (const [d, t] of Object.entries(a.tokens.byDay)) byDay[d] = mergeTotals(byDay[d] ?? emptyTotals(), t);
-  }
-  const tokenSummary: TokenSummary = { available: analyses.some(a => a.tokens.available), total, byModel, byDay, subagent: emptyTotals(), sources: [] };
-  return {
-    sessions: analyses.map(a => ({
-      agent: a.agent, sessionId: a.sessionId, start: a.timing.start, durationMs: a.timing.observedMs, models: a.models,
-      tokens: a.tokens.total, costUsd: a.cost.totalUsd, costStatus: a.cost.status, toolCalls: a.tools.total,
-      failed: a.tools.failed, findings: a.findings.length, loops: a.loops.length,
-    })),
-    total, byModel, byDay, cost: summarizeCost(tokenSummary, pricing),
-  };
+  return summarizeSummaries(analyses.map(a => toSummary(a)), pricing);
 }

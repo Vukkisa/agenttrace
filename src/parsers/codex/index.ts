@@ -21,6 +21,21 @@ import { classifyError, errorSignature, errorSnippet, exitCodeFromText } from '.
 import { describeInput } from '../toolinput.js';
 
 const KNOWN_TOP = new Set(['session_meta', 'turn_context', 'response_item', 'event_msg', 'compacted']);
+/**
+ * Codex injects context into the conversation as user-role messages (environment, AGENTS.md,
+ * permissions...). Observed on Codex 0.45 rollouts. These are not user prompts.
+ */
+const INJECTED_CONTEXT = /^\s*(?:<(?:environment_context|user_instructions|permissions instructions|instructions|turn_aborted|user_shell_command|collaboration_mode|personality_spec|subagent_notification)[\s>]|# AGENTS\.md instructions)/i;
+
+function messageText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content.map(c => (isObj(c) && typeof c.text === 'string' ? c.text : '')).join('');
+}
+export function isInjectedContext(content: unknown): boolean {
+  return INJECTED_CONTEXT.test(messageText(content));
+}
+
 const KNOWN_ITEMS = new Set([
   'message', 'reasoning', 'function_call', 'function_call_output', 'custom_tool_call', 'custom_tool_call_output',
   'local_shell_call', 'web_search_call', 'tool_search_call', 'tool_search_output', 'image_generation_call', 'compaction', 'ghost_snapshot',
@@ -108,6 +123,7 @@ export async function parseCodexSession(file: string): Promise<NormalizedSession
   let sawTotals = false;
   let sawUserEvent = false;
   const fallbackUserPrompts: Date[] = [];
+  const itemUserPrompts: Date[] = []; // app-server style event_msg:item_completed {item:{type:'UserMessage'}}
   let lastWasMalformed = false;
   let lastTs: Date | undefined;
 
@@ -142,7 +158,7 @@ export async function parseCodexSession(file: string): Promise<NormalizedSession
     if (!KNOWN_ITEMS.has(it)) inc(diag.unknownTypeCounts, 'response_item:' + it);
     switch (it) {
       case 'message':
-        if (p.role === 'user' && ts) fallbackUserPrompts.push(ts);
+        if (p.role === 'user' && ts && !isInjectedContext(p.content)) fallbackUserPrompts.push(ts);
         break;
       case 'function_call': {
         let args: unknown = p.arguments;
@@ -267,6 +283,11 @@ export async function parseCodexSession(file: string): Promise<NormalizedSession
           sawUserEvent = true;
           if (ts) s.boundaries.push({ timestamp: ts, kind: 'user-prompt' });
           break;
+        case 'item_completed': {
+          const item = isObj(payload.item) ? payload.item : undefined;
+          if (item && /^user_?message$/i.test(str(item.type) ?? '') && ts && !isInjectedContext(item.content)) itemUserPrompts.push(ts);
+          break;
+        }
         case 'task_complete':
         case 'turn_complete':
           if (ts) s.boundaries.push({ timestamp: ts, kind: 'assistant-end' });
@@ -318,7 +339,8 @@ export async function parseCodexSession(file: string): Promise<NormalizedSession
     diag.truncatedTail = true;
     diag.warnings.push('last line is not valid JSON (file may still be being written)');
   }
-  if (!sawUserEvent) for (const t of fallbackUserPrompts) s.boundaries.push({ timestamp: t, kind: 'user-prompt' });
+  // Prefer explicit user_message events, then app-server UserMessage items, then raw response items.
+  if (!sawUserEvent) for (const t of itemUserPrompts.length ? itemUserPrompts : fallbackUserPrompts) s.boundaries.push({ timestamp: t, kind: 'user-prompt' });
   void lastTs;
 
   s.models = [...models];

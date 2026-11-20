@@ -4,7 +4,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { parseClaudeSession } from '../../src/parsers/claude/index.js';
-import { parseCodexSession } from '../../src/parsers/codex/index.js';
+import { parseCodexSession, isInjectedContext } from '../../src/parsers/codex/index.js';
 import { discover, findSession } from '../../src/discovery/index.js';
 import { zstdSupported } from '../../src/parsers/jsonl.js';
 import { normalizeCommand, isTestCommand, errorSignature, patchPaths } from '../../src/parsers/normalize.js';
@@ -21,7 +21,7 @@ describe('discovery', () => {
     const claude = r.sessions.filter(s => s.agent === 'claude-code');
     const codex = r.sessions.filter(s => s.agent === 'codex');
     expect(claude).toHaveLength(3);
-    expect(codex).toHaveLength(2);
+    expect(codex).toHaveLength(3);
     const main = claude.find(s => s.sessionId.startsWith('1111'))!;
     expect(main.files).toHaveLength(2);
     expect(findSession(r.sessions, '0199aaaa').agent).toBe('codex');
@@ -121,6 +121,19 @@ describe('Codex parser', () => {
     expect(patch.status).toBe('success');
     expect(s.interruptions).toBe(1);
     expect(s.boundaries.filter(b => b.kind === 'user-prompt')).toHaveLength(2);
+  });
+
+  it('Codex 0.45 app-server rollouts: injected context is not a prompt', async () => {
+    const s = await parseCodexSession(path.join(FX, 'codex/sessions/2026/11/18/rollout-2026-11-18T09-00-00-0199bbbb-0000-7000-8000-000000000045.jsonl'));
+    expect(s.boundaries.filter(b => b.kind === 'user-prompt')).toHaveLength(1);
+    expect(s.boundaries.filter(b => b.kind === 'assistant-end')).toHaveLength(2);
+    expect(s.models).toEqual(['gpt-5-codex']);
+    expect(s.usage).toHaveLength(0); // no token_count events -> tokens unavailable, not zero-cost
+    expect(s.diagnostics[0].malformedLines).toBe(0);
+    expect(s.diagnostics[0].unknownTypeCounts).toEqual({});
+    expect(isInjectedContext([{ type: 'input_text', text: '<environment_context><cwd>/x</cwd></environment_context>' }])).toBe(true);
+    expect(isInjectedContext([{ type: 'input_text', text: '# AGENTS.md instructions for /x' }])).toBe(true);
+    expect(isInjectedContext([{ type: 'input_text', text: 'please fix <environment_context> parsing' }])).toBe(false);
   });
 
   it('reports unknown record types instead of failing', async () => {

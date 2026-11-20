@@ -16,6 +16,12 @@
 ## Milestones
 - [x] **v0.1 Core** — engine, CLI, HTML report, 43 tests, verified on real sessions
 - [ ] **v0.2 Shippable** — git repo, CI, npm publish (`npx agenttrace`), cache for fast `--all`, validate Codex on real logs
+  - [x] git repo + .gitignore
+  - [x] CI workflow written (not yet run on GitHub — needs push)
+  - [x] summary cache: `analyze --all` 7.0 s → ~0.25 s warm
+  - [x] package ready (`npm pack` + install + npx tested)
+  - [~] Codex real validation: 1 real session only, no token/tool events available
+  - [ ] decide npm name (`agenttrace` likely blocked by `agent-trace`), push to GitHub, publish
 - [ ] **v0.3 MCP** — `agenttrace mcp` with `list_sessions`, `analyze_session`, `get_failures`, `cost_summary`
 - [ ] **v0.4 Dashboard** — `agenttrace serve`: session list, filters, trends, report drill-down, compare two sessions
 - [ ] **v0.5 Insights** — cross-session patterns, suggested `CLAUDE.md` rules

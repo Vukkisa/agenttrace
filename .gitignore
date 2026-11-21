@@ -33,3 +33,4 @@ auth.json
 *.log
 .DS_Store
 tmp/
+DevScope_MVP_Build_Prompt.md

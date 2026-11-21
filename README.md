@@ -45,11 +45,11 @@ Or run it without linking: `node dist/cli/index.js <command>`.
 You can also build the package tarball and run it with `npx`:
 
 ```bash
-npm pack                                   # creates agenttrace-0.2.0.tgz
-npx ./agenttrace-0.2.0.tgz analyze --latest
+npm pack                                   # creates vukkisa-agenttrace-0.2.0.tgz
+npx ./vukkisa-agenttrace-0.2.0.tgz analyze --latest
 ```
 
-Once published, `npx <package-name> analyze --latest` will work without cloning.
+Once published, `npx @vukkisa/agenttrace analyze --latest` will work without cloning. The installed command is still `agenttrace`.
 
 ## Quick start
 

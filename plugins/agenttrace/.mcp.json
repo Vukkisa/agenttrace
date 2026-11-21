@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "agenttrace": {
+      "command": "npx",
+      "args": ["-y", "@vukkisa/agenttrace@0.3.0", "mcp"]
+    }
+  }
+}

@@ -154,6 +154,38 @@ Global options go before `mcp`, e.g. `agenttrace --claude-dir /other/claude --no
 - **Local only.** Source logs are never modified. The one thing it writes is AgentTrace's own summary cache (see [Caching](#caching)); disable it with `--no-cache`. It does not generate reports.
 - stdout carries protocol messages only; diagnostics go to stderr.
 
+### `/agenttrace` command and Claude Code plugin
+
+A skill turns the four tools into a ready-made session report (highlight, usage, time, agent activity, problems, what it means). It uses only the MCP tools: no CLI fallback, no transcripts, no absolute paths, and command text stays off. If the MCP server isn't connected it tells you how to reconnect instead of guessing.
+
+| Command | Does |
+|---|---|
+| `/agenttrace` | Short report on the latest session |
+| `/agenttrace latest` | Full report on the latest session |
+| `/agenttrace sessions` | List the 10 most recent sessions |
+| `/agenttrace failures` | Repeated failures and possible loops in the latest session |
+| `/agenttrace costs` | Estimated API-equivalent cost by model |
+| `/agenttrace weekly` | Last 7 days: cost by model, daily token activity, session count |
+
+"Latest" means the most recently modified session, which may be the one you are in. Weekly output has no per-day cost, because daily totals aren't split by model.
+
+**Option A: standalone skill (exact `/agenttrace` name).** Needs the MCP server from the section above. From a source checkout:
+
+```bash
+scripts/install-skill.sh            # dry run, shows what would change
+scripts/install-skill.sh --apply    # copies SKILL.md to ~/.claude/skills/agenttrace/
+```
+
+It never overwrites a different existing skill unless you pass `--force` (the old file is saved as `SKILL.md.bak`), and never touches your MCP registration or settings. Remove it with `scripts/install-skill.sh --uninstall --apply`. Restart Claude Code after installing or removing.
+
+**Option B: plugin** (bundles the MCP server and the skill, [`plugins/agenttrace`](plugins/agenttrace)). Try it without installing anything:
+
+```bash
+claude --plugin-dir ./plugins/agenttrace
+```
+
+Plugin skills are namespaced, so the commands are `/agenttrace:agenttrace`, `/agenttrace:agenttrace latest`, and so on. The plugin starts its own MCP server, so don't enable it alongside a manual `agenttrace` registration. You'd get two servers with the same tools. See the [plugin README](plugins/agenttrace/README.md) for details and removal.
+
 ## Supported agents and formats
 
 | Agent | Where | Format | Status |

@@ -36,6 +36,7 @@
     - Time values must say whether they are measured durations or estimates.
     - No per-operation token breakdown unless separately implemented and validated.
     - Automated improvement suggestions and `CLAUDE.md` recommendations stay in v0.5.
+- [ ] **v0.3.x Claude Code packaging** — `/agenttrace` skill and a Claude Code plugin that bundle the existing MCP server. Uses only the four MCP tools; no new analysis, no improvement suggestions (those stay in v0.5).
 - [ ] **v0.4 Dashboard** — `agenttrace serve`: session list, filters, trends, report drill-down, compare two sessions
 - [ ] **v0.5 Insights** — cross-session patterns, suggested `CLAUDE.md` rules
 - [ ] **Later (optional)** — VS Code panel, more agents, team exports

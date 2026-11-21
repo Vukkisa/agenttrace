@@ -226,6 +226,18 @@ program.command('pricing')
     if (t.loadedFrom.length) console.log(`\nOverrides loaded from: ${t.loadedFrom.join(', ')}`);
   });
 
+program.command('mcp')
+  .description('Run the local MCP server over stdio (list_sessions, analyze_session, get_failures, cost_summary). Read-only; stdout is protocol only.')
+  .action(async () => {
+    const { serveMcp } = await import('../mcp/server.js');
+    serveMcp({
+      discovery: discOpts(),
+      pricingFile: g().pricing,
+      cacheEnabled: g().cache !== false,
+      log: m => console.error(`agenttrace-mcp: ${m}`),
+    });
+  });
+
 program.parseAsync(process.argv).catch(e => {
   console.error(`agenttrace: ${(e as Error).message}`);
   process.exit(1);

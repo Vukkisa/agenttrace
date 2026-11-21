@@ -96,10 +96,63 @@ $ agenttrace analyze --session 11111111
 | `agenttrace cache info` | Show where the cache is and how big it is |
 | `agenttrace cache clear` | Delete the cache |
 | `agenttrace reports-clean [--dir .] [--yes]` | List / delete generated `agenttrace-report-*.html` files |
+| `agenttrace mcp` | Run the local MCP server over stdio (see [Use with Claude Code](#use-with-claude-code-mcp)) |
 
 **Global options:** `--claude-dir <path>`, `--codex-dir <path>`, `--pricing <file>`, `--agent claude-code|codex`, `--no-cache`.
 
 **Detection options** (`analyze`, `report`): `--threshold <n>` (default 3), `--pause-minutes <n>` (default 5), `--show-errors` (include redacted first-line error excerpts; off by default).
+
+## Use with Claude Code (MCP)
+
+`agenttrace mcp` is a local [MCP](https://modelcontextprotocol.io) server over **stdio**. It lets Claude Code (or any MCP client) query your session analysis in chat: *"Why did my last session cost so much?"* Claude calls AgentTrace, AgentTrace reads your local logs, and Claude explains the result. It needs no network, no cloud service and no LLM API key.
+
+> Requires AgentTrace 0.3 or later. Until 0.3 is published to npm, use the "From source" install and point the client at `dist/cli/index.js`.
+
+**Add it to Claude Code**
+
+```bash
+claude mcp add agenttrace -- npx -y @vukkisa/agenttrace mcp
+```
+
+From a source checkout instead:
+
+```bash
+claude mcp add agenttrace -- node /absolute/path/to/agenttrace/dist/cli/index.js mcp
+```
+
+Or in a project `.mcp.json`:
+
+```json
+{ "mcpServers": { "agenttrace": { "command": "npx", "args": ["-y", "@vukkisa/agenttrace", "mcp"] } } }
+```
+
+Global options go before `mcp`, e.g. `agenttrace --claude-dir /other/claude --no-cache mcp`. Then ask in chat, for example:
+
+- "List my recent sessions."
+- "Analyze my latest session and tell me where it wasted time."
+- "Show the repeated failures in session `1111`."
+- "How much did my sessions cost this week, by model?"
+
+**Tools** (all read-only; each returns structured JSON)
+
+| Tool | Inputs | Returns |
+|---|---|---|
+| `list_sessions` | `agent?`, `limit?` (≤100, default 20), `project?` | Session id, project folder name, start, measured duration, models, tool calls, failed calls, finding count, estimated cost |
+| `analyze_session` | `session?` (id or prefix) or `latest` | Tokens, estimated cost, timing, per-tool stats, up to 20 findings (no evidence, no commands) |
+| `get_failures` | `session?` or `latest`, `kind?`, `include_commands?`, `max_findings?` | Findings with up to 8 evidence items each: timestamp, tool, status, exit code, error class |
+| `cost_summary` | `agent?`, `since?` (`YYYY-MM-DD`), `group_by?` (`model`, `day`, `session`), `limit?` | Token totals and estimated cost, grouped |
+
+**What the MCP server will and won't return**
+
+- **Never** returns prompts, assistant text, tool output, file contents, file lists, working-directory paths or error excerpts. Every response is built from a fixed field allowlist (`src/mcp/sanitize.ts`), and a final check refuses to send a response that contains an absolute path.
+- **Command text is off by default.** `get_failures` with `include_commands: true` adds the command for each evidence item, redacted for secrets, with absolute paths shortened to `<path>/name`, on one line and truncated.
+- **Limits:** at most 20 findings and 8 evidence items per finding per response.
+- **Costs** are *estimated API-equivalent* costs at public list prices, never your bill. They are labelled that way in every response. Per-day grouping returns tokens only, because daily totals are not split by model.
+- **Times** carry `kind: "measured"` (from log timestamps) or `kind: "estimated"` (derived). Observed spans include any time spent waiting for approvals.
+- **Per-operation token breakdown is not included.** AgentTrace totals tokens per session and per model, not per tool call.
+- **No suggestions.** The server reports what happened. It does not generate fixes or `CLAUDE.md` rules (planned for a later version).
+- **Local only.** Source logs are never modified. The one thing it writes is AgentTrace's own summary cache (see [Caching](#caching)); disable it with `--no-cache`. It does not generate reports.
+- stdout carries protocol messages only; diagnostics go to stderr.
 
 ## Supported agents and formats
 
@@ -159,6 +212,7 @@ agenttrace analyze --latest --pricing my-prices.json
 - No network access, no telemetry, no LLM calls, no credentials required.
 - Reports contain metadata, counts, tool names, **redacted** shell commands and file paths. Prompts, assistant text, file contents and tool output are **not** included.
 - `--show-errors` adds the first line of error output, after secret redaction (API keys, tokens, JWTs, private keys, `password=`-style values, credentials in URLs).
+- The MCP server (`agenttrace mcp`) returns summaries and evidence only, with the extra rules in [Use with Claude Code](#use-with-claude-code-mcp). What it returns becomes part of your chat with the assistant, so it is limited on purpose.
 - Reports are written only where you choose (`--out`, default: current directory) with `0600` permissions.
 - **Cache:** `sessions` and `analyze --all` keep a summary cache in your user cache folder (`~/Library/Caches/agenttrace` on macOS, `$XDG_CACHE_HOME/agenttrace` or `~/.cache/agenttrace` on Linux, `%LOCALAPPDATA%\agenttrace\Cache` on Windows; override with `AGENTTRACE_CACHE_DIR`). It holds only per-session counts, token totals, timing, model names, project folder and the size and modification time of each log file. It holds no prompts, commands or tool output. Permissions are `0600`. Disable it with `--no-cache`, delete it with `agenttrace cache clear`.
 

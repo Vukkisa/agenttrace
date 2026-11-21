@@ -23,7 +23,7 @@
   - [x] accuracy check on real sessions: fixed double counting of resumed sessions, permission-error window, weak-loop rule
   - [~] Codex real validation: 1 real session only, no token/tool events available
   - [x] npm name `@vukkisa/agenttrace` chosen, pushed to GitHub, published as 0.2.0 (verified with `npx`)
-- [ ] **v0.3 MCP** — `agenttrace mcp`: lets Claude Code (or any MCP client) query local session analysis in chat. Next milestone; not started.
+- [ ] **v0.3 MCP** — `agenttrace mcp`: lets Claude Code (or any MCP client) query local session analysis in chat. Implemented (official `@modelcontextprotocol/server` v2, stdio); 89 tests pass; all four tools tried in a real Claude Code client; not yet committed, versioned (still 0.2.0) or published.
   - Tools (all read-only):
     1. `list_sessions`
     2. `analyze_session`

@@ -1,5 +1,5 @@
 /** Package version. Kept in sync with package.json (checked by a test). */
-export const VERSION = '0.2.0';
+export const VERSION = '0.3.0';
 
 /**
  * Bump whenever a parser or analysis change can alter results for unchanged log files.

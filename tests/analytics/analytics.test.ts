@@ -8,6 +8,7 @@ import { costForModel, summarizeCost } from '../../src/analytics/costs/index.js'
 import { summarizeTokens, emptyTotals } from '../../src/analytics/tokens/index.js';
 import { analyzeTiming } from '../../src/analytics/timing/index.js';
 import { detectLoops } from '../../src/analytics/loops/index.js';
+import { detectFailures } from '../../src/analytics/failures/index.js';
 import type { NormalizedSession, ToolCall } from '../../src/types.js';
 import { redact } from '../../src/privacy/redact.js';
 
@@ -213,6 +214,43 @@ describe('loop detection edge cases', () => {
     }
     const loops = detectLoops(session(calls), cfg);
     expect(loops.some(l => l.title.includes('2-step sequence repeated 3 times'))).toBe(true);
+  });
+});
+
+describe('permission errors and weak loops (real-data accuracy fixes)', () => {
+  const mk = (min: number, over: Partial<ToolCall> = {}): ToolCall => ({
+    id: 'p' + min + Math.random(), name: 'Bash', timestamp: new Date(Date.UTC(2026, 0, 1, 0, 0) + min * 60_000), status: 'error',
+    errorClass: 'permission', errorSignature: 'denied', inputKey: 'Bash:cmd:x' + min, inputSummary: 'x', command: 'x', ...over,
+  });
+  const session = (calls: ToolCall[]): NormalizedSession => ({
+    agent: 'claude-code', sessionId: 's', files: [], models: [], usage: [], usageAvailable: false, toolCalls: calls,
+    boundaries: [], eventTimes: [], apiErrors: 0, interruptions: 0, diagnostics: [],
+  });
+  const cfg = { threshold: 3, similarErrorWindowMs: 600_000, includeErrorSnippets: false };
+
+  it('does not flag permission denials spread over days', () => {
+    const day = 24 * 60;
+    expect(detectFailures(session([0, day, 3 * day, 20 * day].map(m => mk(m))), cfg).filter(f => f.kind === 'repeated-permission-error')).toHaveLength(0);
+  });
+  it('flags a burst of permission denials and counts only the burst', () => {
+    const f = detectFailures(session([0, 2, 5, 30 * 24 * 60].map(m => mk(m))), cfg).filter(x => x.kind === 'repeated-permission-error');
+    expect(f).toHaveLength(1);
+    expect(f[0].occurrences).toBe(3);
+    expect(f[0].spanMs).toBeLessThanOrEqual(5 * 60_000);
+  });
+
+  const ui = (i: number): ToolCall => ({
+    id: 'u' + i, name: 'mcp__browser__computer', timestamp: new Date(Date.UTC(2026, 0, 1, 0, i)), status: 'success',
+    inputKey: 'computer:screenshot', inputSummary: 'computer', ...{},
+  });
+  it('does not flag 3 successful identical UI-tool calls as a loop', () => {
+    expect(detectLoops(session([0, 1, 2].map(ui)), cfg)).toHaveLength(0);
+    expect(detectLoops(session([0, 1, 2, 3, 4].map(ui)), cfg)).toHaveLength(0);
+  });
+  it('still flags long successful repetition and short failing repetition', () => {
+    expect(detectLoops(session([0, 1, 2, 3, 4, 5].map(ui)), cfg)).toHaveLength(1);
+    const failing = [0, 1, 2].map(i => ({ ...ui(i), status: 'error' as const, errorSignature: 'e' }));
+    expect(detectLoops(session(failing), cfg)).toHaveLength(1);
   });
 });
 

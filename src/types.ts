@@ -79,6 +79,12 @@ export interface ParserDiagnostics {
   truncatedTail: boolean;
   recordTypeCounts: Record<string, number>;
   unknownTypeCounts: Record<string, number>;
+  /**
+   * Conversation records whose sessionId names a different session. Resuming a Claude Code session
+   * copies the earlier history into the new file; those copies belong to the original session and
+   * are excluded here so tokens, calls and findings are not counted twice.
+   */
+  replayedRecords?: number;
   warnings: string[];
 }
 

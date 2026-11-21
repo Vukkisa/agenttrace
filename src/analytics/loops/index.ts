@@ -4,7 +4,8 @@
  *
  * Patterns:
  *  A. Cycles: the same sequence of 1-3 tool calls (same tool, same normalized input, same
- *     outcome) repeated back-to-back >= threshold times.
+ *     outcome) repeated back-to-back >= threshold times (2x threshold when nothing failed and
+ *     nothing was modified, since that is weak evidence of being stuck).
  *  B. Retry without change: a failing command re-run >= threshold times with no file
  *     modification recorded between consecutive failures.
  */
@@ -12,8 +13,6 @@ import type { NormalizedSession, ToolCall } from '../../types.js';
 import { isModifyingTool } from '../../parsers/toolinput.js';
 import { isTestCommand } from '../../parsers/normalize.js';
 import { type DetectionConfig, type Finding, sampleEvidence, spanOf } from '../findings.js';
-
-const READ_ONLY = /^(Read|Grep|Glob|LS|read_file|list_dir|view_image|web_search|WebSearch|WebFetch)$/;
 
 function tokenOf(c: ToolCall): string {
   return `${c.inputKey}|${c.status === 'error' ? 'error:' + (c.errorSignature ?? '') : c.status}`;
@@ -40,9 +39,10 @@ function detectCycles(calls: ToolCall[], cfg: DetectionConfig, startId: number):
       if (reps < cfg.threshold) continue;
       const cycle = calls.slice(i, i + p);
       const hasError = cycle.some(c => c.status === 'error');
-      const readOnlySuccess = !hasError && cycle.every(c => READ_ONLY.test(c.name) || (!!c.command && !isModifyingTool(c.name)));
-      // Successful read-only polling (e.g. checking status) needs twice the evidence.
-      if (readOnlySuccess && reps < cfg.threshold * 2) continue;
+      // A cycle with no failure and no file modification (polling, screenshots, clicking through a UI,
+      // re-reading) is weak evidence of being stuck, so it needs twice the repetitions.
+      const noErrorNoChange = !hasError && cycle.every(c => !isModifyingTool(c.name) && !c.modifiedPaths?.length);
+      if (noErrorNoChange && reps < cfg.threshold * 2) continue;
       found = { p, reps };
     }
     if (!found) { i++; continue; }

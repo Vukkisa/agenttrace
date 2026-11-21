@@ -5,4 +5,4 @@ export const VERSION = '0.2.0';
  * Bump whenever a parser or analysis change can alter results for unchanged log files.
  * Any change invalidates the whole summary cache.
  */
-export const PARSER_VERSION = 2;
+export const PARSER_VERSION = 3;

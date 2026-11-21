@@ -30,10 +30,23 @@ Everything runs offline. Nothing is uploaded, no LLM is used, no API key is need
 
 Requires **Node.js 22 or newer** (22.15+ to read compressed `.jsonl.zst` Codex logs).
 
-AgentTrace is **not published to npm yet**. Until it is, install from source:
+Run it without installing:
 
 ```bash
-git clone <repository-url> agenttrace
+npx @vukkisa/agenttrace analyze --latest
+```
+
+Or install it globally (the command is `agenttrace`):
+
+```bash
+npm install -g @vukkisa/agenttrace
+agenttrace analyze --latest
+```
+
+### From source
+
+```bash
+git clone https://github.com/Vukkisa/agenttrace.git
 cd agenttrace
 npm ci
 npm run build
@@ -41,15 +54,6 @@ npm link            # optional: puts `agenttrace` on your PATH
 ```
 
 Or run it without linking: `node dist/cli/index.js <command>`.
-
-You can also build the package tarball and run it with `npx`:
-
-```bash
-npm pack                                   # creates vukkisa-agenttrace-0.2.0.tgz
-npx ./vukkisa-agenttrace-0.2.0.tgz analyze --latest
-```
-
-Once published, `npx @vukkisa/agenttrace analyze --latest` will work without cloning. The installed command is still `agenttrace`.
 
 ## Quick start
 
@@ -101,7 +105,7 @@ $ agenttrace analyze --session 11111111
 
 | Agent | Where | Format | Status |
 |---|---|---|---|
-| Claude Code | `--claude-dir`, `$CLAUDE_CONFIG_DIR` (comma-separated), `~/.claude`, `~/.config/claude` | `projects/<project>/<session>.jsonl` plus subagent transcripts in `<session>/subagents/*.jsonl` (counted in the parent session) | Supported. Validated on a large set of real local sessions (Claude Code 2.1.x): token totals match an independent per-message count exactly. |
+| Claude Code | `--claude-dir`, `$CLAUDE_CONFIG_DIR` (comma-separated), `~/.claude`, `~/.config/claude` | `projects/<project>/<session>.jsonl` plus subagent transcripts in `<session>/subagents/*.jsonl` (counted in the parent session) | Supported. Validated on a large set of real local sessions (Claude Code 2.1.x): summed over all sessions, token totals match an independent count of unique API messages within 0.5%, and per-session tool-call and failure counts match the raw logs exactly. |
 | Codex CLI / IDE | `--codex-dir`, `$CODEX_HOME`, `~/.codex` | `sessions/**/rollout-*.jsonl` and `archived_sessions/` with `{timestamp,type,payload}` records | Supported. Real validation limited (see below). |
 | Codex | | VS Code / app-server rollouts (0.45+: `item_completed` events, injected `<environment_context>` messages) | Supported; checked against one real rollout. |
 | Codex | | Legacy early-2025 rollouts (bare items, no per-item timestamps) | Supported (synthetic fixtures). |
@@ -167,9 +171,9 @@ Local benchmark results (one developer machine, a large real session history, `a
 | Run | Time |
 |---|---|
 | v0.1 (no cache), 3 runs | 7.0 s |
-| v0.2 first run (builds cache) | 7.4 s |
-| v0.2 repeat run, nothing changed (4 runs) | 0.24–0.59 s (median 0.25 s) |
-| v0.2 repeat run, one active session changed | 0.35 s |
+| v0.2 first run (builds cache) | 7.4–8.9 s |
+| v0.2 repeat run, nothing changed (7 runs) | 0.24–0.59 s (median 0.25 s) |
+| v0.2 repeat run, one active session changed | 0.35–0.75 s |
 | v0.2 `--no-cache` | 6.9 s |
 | v0.2 `sessions --limit 500`, cached | 0.33 s |
 
@@ -179,10 +183,10 @@ All deterministic; default threshold 3 (`--threshold`).
 
 - **Repeated failed command / test:** the same normalized command returns an error ≥ threshold times. Reports whether it later succeeded and how many file modifications happened between the first and last failure.
 - **Identical failed retry:** the same tool with byte-identical input errors ≥ threshold times.
-- **Repeated permission errors:** permission / sandbox / user-denial errors ≥ threshold times for one tool.
+- **Repeated permission errors:** permission / sandbox / user-denial errors ≥ threshold times for one tool **within 10 minutes**. Denials spread over days are not repetition.
 - **Similar errors:** the same normalized error signature ≥ threshold times within 10 minutes across *different* inputs.
 - **Repeated reads:** the same read ≥ threshold times with no recorded modification of that file and no context compaction in between. Flagged as possibly legitimate.
-- **Possible loops:** (a) the same 1–3 call sequence (same tool, input and outcome) repeated back-to-back ≥ threshold times; successful read-only polling needs 2× threshold. (b) A failing command re-run ≥ threshold times with no Edit/Write/patch in between.
+- **Possible loops:** (a) the same 1–3 call sequence (same tool, input and outcome) repeated back-to-back ≥ threshold times; cycles with no failure and no file modification (polling, screenshots, UI clicking) need 2× threshold, because they are weak evidence of being stuck. (b) A failing command re-run ≥ threshold times with no Edit/Write/patch in between.
 
 ## Known limitations
 
@@ -191,7 +195,7 @@ All deterministic; default threshold 3 (`--threshold`).
 - File modifications made through shell commands (`sed -i`, codegen, formatters) are invisible, so "no file changes between retries" means "none recorded by the agent's edit tools".
 - Claude Code tool durations are call→result intervals (including approval waits) unless the log records a duration.
 - Subagent tokens are included in the parent session. Subagent tool calls are excluded from the timeline and from main-sequence loop detection.
-- Sessions resumed into a new file appear as separate sessions.
+- **Resumed Claude Code sessions** copy the earlier history into the new file. AgentTrace skips those copied records (they carry the original session's ID) and counts them only in the original session, so nothing is counted twice. The new session shows only its own activity and a note with the number of skipped records. If the original file has been deleted (Claude Code cleans up old transcripts), that earlier history is no longer counted anywhere. A small number of messages can still appear in two sessions (under 0.5% of tokens here).
 - The first `analyze --all` still parses everything (about 7 s for a large history in local benchmarks). Single-session `analyze`, `report` and `inspect` always parse fresh and do not use the cache.
 - CI covers Linux (Node 22, 24, 26) and macOS (Node 24). Windows is not tested.
 

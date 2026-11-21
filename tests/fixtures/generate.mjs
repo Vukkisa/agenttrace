@@ -84,6 +84,35 @@ write('claude/projects/-home-dev-other/33333333-3333-4333-8333-333333333333.json
   ...assistant('09:00:05', 'msg_u1', 'mystery-model-1', [{ type: 'text', text: 'hi' }], usage(100, 50, 0, 0), 'end_turn').map(r => ({ ...r, sessionId: '33333333-3333-4333-8333-333333333333' })),
 ]);
 
+// A resumed session. Claude Code copies the earlier history into the new file, keeping the ORIGINAL
+// sessionId on the copied records. The copies must not be counted again in the resumed session.
+{
+  const ORIG = '44444444-4444-4444-8444-444444444444';
+  const RESUMED = '55555555-5555-4555-8555-555555555555';
+  const day1 = '2026-11-17', day2 = '2026-11-18';
+  const mine = (sid, day) => {
+    const b = { ...base, sessionId: sid, cwd: '/home/dev/resume-app' };
+    const rec = (ts, extra) => ({ ...b, uuid: uuid(), timestamp: T(ts, day), ...extra });
+    return { b, rec };
+  };
+  const o = mine(ORIG, day1);
+  const history = [
+    o.rec('09:00:00', { type: 'user', message: { role: 'user', content: 'start the work' } }),
+    { ...o.rec('09:00:05', { type: 'assistant', requestId: 'req_o1' }), message: { id: 'msg_o1', type: 'message', role: 'assistant', model: 'claude-sonnet-5-5', stop_reason: 'tool_use', usage: usage(10, 200, 5000, 1000), content: [toolUse('tu_o1', 'Bash', { command: 'ls' })] } },
+    o.rec('09:00:07', { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'tu_o1', content: 'ok', is_error: false }] } }),
+    { ...o.rec('09:00:10', { type: 'assistant', requestId: 'req_o2' }), message: { id: 'msg_o2', type: 'message', role: 'assistant', model: 'claude-sonnet-5-5', stop_reason: 'end_turn', usage: usage(5, 100, 6000, 0), content: [{ type: 'text', text: 'done' }] } },
+  ];
+  write(`claude/projects/-home-dev-resume-app/${ORIG}.jsonl`, history);
+  const r = mine(RESUMED, day2);
+  write(`claude/projects/-home-dev-resume-app/${RESUMED}.jsonl`, [
+    ...history, // replayed copies: identical records, original sessionId
+    r.rec('10:00:00', { type: 'user', message: { role: 'user', content: 'continue the work' } }),
+    { ...r.rec('10:00:05', { type: 'assistant', requestId: 'req_r1' }), message: { id: 'msg_r1', type: 'message', role: 'assistant', model: 'claude-sonnet-5-5', stop_reason: 'tool_use', usage: usage(7, 50, 7000, 0), content: [toolUse('tu_r1', 'Bash', { command: 'pwd' })] } },
+    r.rec('10:00:07', { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'tu_r1', content: 'ok', is_error: false }] } }),
+    { ...r.rec('10:00:10', { type: 'assistant', requestId: 'req_r2' }), message: { id: 'msg_r2', type: 'message', role: 'assistant', model: 'claude-sonnet-5-5', stop_reason: 'end_turn', usage: usage(3, 30, 8000, 0), content: [{ type: 'text', text: 'ok' }] } },
+  ]);
+}
+
 // ---------------- Codex (current format) ----------------
 const CID = '0199aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee';
 const ev = (ts, payload) => ({ timestamp: T(ts), type: 'event_msg', payload });

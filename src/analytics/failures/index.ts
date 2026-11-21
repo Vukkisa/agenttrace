@@ -25,6 +25,17 @@ function groupBy<K>(items: ToolCall[], key: (c: ToolCall) => K | undefined): Map
   return m;
 }
 
+/** The largest set of calls that all fall inside one window of `windowMs` (sliding window over time). */
+export function densestWindow(group: ToolCall[], windowMs: number): ToolCall[] {
+  const sorted = [...group].sort((a, b) => t(a) - t(b));
+  let best: ToolCall[] = [];
+  for (let i = 0, j = 0; j < sorted.length; j++) {
+    while (t(sorted[j]) - t(sorted[i]) > windowMs) i++;
+    if (j - i + 1 > best.length) best = sorted.slice(i, j + 1);
+  }
+  return best;
+}
+
 export function samePath(a: string, b: string): boolean {
   if (a === b) return true;
   const na = a.replace(/\\/g, '/'); const nb = b.replace(/\\/g, '/');
@@ -83,15 +94,18 @@ export function detectFailures(s: NormalizedSession, cfg: DetectionConfig): Find
     });
   }
 
-  // 3. Repeated permission / approval errors.
+  // 3. Repeated permission / approval errors, within a short window. Denials spread over days or
+  // weeks are separate events, not repetition, so only a burst inside the window counts.
   for (const [tool, group] of groupBy(calls.filter(c => c.status === 'error' && c.errorClass === 'permission'), c => c.name)) {
     if (group.length < cfg.threshold) continue;
+    const burst = densestWindow(group, cfg.similarErrorWindowMs);
+    if (burst.length < cfg.threshold) continue;
     findings.push({
       id: id(), kind: 'repeated-permission-error', label: 'REPEATED FAILURE DETECTED',
       title: `Repeated permission or approval errors (${tool})`, basis: 'measured', severity: 'medium',
-      subject: tool, occurrences: group.length, failures: group.length, ...spanOf(group), tools: [tool],
-      evidence: sampleEvidence(group, cfg),
-      why: `${group.length} ${tool} calls failed with permission, sandbox or user-denial errors.`,
+      subject: tool, occurrences: burst.length, failures: burst.length, ...spanOf(burst), tools: [tool],
+      evidence: sampleEvidence(burst, cfg),
+      why: `${burst.length} ${tool} calls failed with permission, sandbox or user-denial errors within ${Math.round(cfg.similarErrorWindowMs / 60000)} minutes.`,
       recommendation: 'Adjust permissions/sandbox settings or the approach, rather than retrying calls that will be denied.',
     });
   }
@@ -101,12 +115,7 @@ export function detectFailures(s: NormalizedSession, cfg: DetectionConfig): Find
     if (group.length < cfg.threshold || !sig) continue;
     if (new Set(group.map(c => c.inputKey)).size < 2) continue; // identical inputs already handled
     if (group.every(c => covered.has(c))) continue;
-    const sorted = [...group].sort((a, b) => t(a) - t(b));
-    let best: ToolCall[] = [];
-    for (let i = 0, j = 0; j < sorted.length; j++) {
-      while (t(sorted[j]) - t(sorted[i]) > cfg.similarErrorWindowMs) i++;
-      if (j - i + 1 > best.length) best = sorted.slice(i, j + 1);
-    }
+    const best = densestWindow(group, cfg.similarErrorWindowMs);
     if (best.length < cfg.threshold) continue;
     findings.push({
       id: id(), kind: 'similar-errors', label: 'REPEATED FAILURE DETECTED',

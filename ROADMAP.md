@@ -20,9 +20,22 @@
   - [x] CI workflow written (not yet run on GitHub — needs push)
   - [x] summary cache: `analyze --all` 7.0 s → ~0.25 s warm
   - [x] package ready (`npm pack` + install + npx tested)
+  - [x] accuracy check on real sessions: fixed double counting of resumed sessions, permission-error window, weak-loop rule
   - [~] Codex real validation: 1 real session only, no token/tool events available
   - [ ] decide npm name (`agenttrace` likely blocked by `agent-trace`), push to GitHub, publish
-- [ ] **v0.3 MCP** — `agenttrace mcp` with `list_sessions`, `analyze_session`, `get_failures`, `cost_summary`
+- [ ] **v0.3 MCP** — `agenttrace mcp`: lets Claude Code (or any MCP client) query local session analysis in chat. Next milestone; not started.
+  - Tools (all read-only):
+    1. `list_sessions`
+    2. `analyze_session`
+    3. `get_failures`
+    4. `cost_summary`
+  - Rules:
+    - Runs locally. No cloud service and no LLM API needed by AgentTrace.
+    - Returns only summaries and supporting evidence (counts, timestamps, tool names, error signatures), never raw transcript contents.
+    - Costs are estimated API-equivalent costs, not actual subscription bills.
+    - Time values must say whether they are measured durations or estimates.
+    - No per-operation token breakdown unless separately implemented and validated.
+    - Automated improvement suggestions and `CLAUDE.md` recommendations stay in v0.5.
 - [ ] **v0.4 Dashboard** — `agenttrace serve`: session list, filters, trends, report drill-down, compare two sessions
 - [ ] **v0.5 Insights** — cross-session patterns, suggested `CLAUDE.md` rules
 - [ ] **Later (optional)** — VS Code panel, more agents, team exports

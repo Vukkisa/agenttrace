@@ -88,7 +88,7 @@ describe('summary cache', () => {
 
     const sub = path.join(env.proj, '11111111-1111-4111-8111-111111111111', 'subagents', 'agent-new.jsonl');
     fs.copyFileSync(path.join(path.dirname(sub), 'agent-a1b2c3.jsonl'), sub);
-    const added = path.join(env.proj, '44444444-4444-4444-8444-444444444444.jsonl');
+    const added = path.join(env.proj, '66666666-6666-4666-8666-666666666666.jsonl');
     fs.copyFileSync(path.join(env.proj, '11111111-1111-4111-8111-111111111111.jsonl'), added);
     age(sub); age(added);
     const second = await run(env);

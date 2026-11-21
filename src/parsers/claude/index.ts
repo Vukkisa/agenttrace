@@ -11,6 +11,7 @@
  *  - type "system": subtype api_error / compact_boundary / stop_hook_summary, ...
  *  - many other bookkeeping types (attachment, file-history-snapshot, ...) are counted only.
  */
+import path from 'node:path';
 import type { NormalizedSession, ParserDiagnostics, ToolCall, TurnBoundary, UsageRecord } from '../../types.js';
 import { inc, isObj, num, parseTime, readJsonl, str } from '../jsonl.js';
 import { classifyError, errorSignature, errorSnippet, exitCodeFromText } from '../normalize.js';
@@ -59,7 +60,7 @@ function usageFrom(u: Record<string, unknown>, model: string | undefined, ts: Da
   };
 }
 
-async function parseFile(file: string, st: State, subagent: boolean): Promise<void> {
+async function parseFile(file: string, st: State, subagent: boolean, ownId: string): Promise<void> {
   const diag: ParserDiagnostics = {
     file, totalLines: 0, parsedRecords: 0, malformedLines: 0, truncatedTail: false,
     recordTypeCounts: {}, unknownTypeCounts: {}, warnings: [],
@@ -78,6 +79,13 @@ async function parseFile(file: string, st: State, subagent: boolean): Promise<vo
     const type = str(rec.type) ?? '(none)';
     inc(diag.recordTypeCounts, type);
     if (!KNOWN_TYPES.has(type)) inc(diag.unknownTypeCounts, type);
+
+    // Resumed sessions replay earlier history with the ORIGINAL sessionId. Those records belong to
+    // the original session (which has its own file), so skip them instead of counting them twice.
+    if (type === 'assistant' || type === 'user' || type === 'system') {
+      const sid = str(rec.sessionId);
+      if (sid && sid !== ownId) { diag.replayedRecords = (diag.replayedRecords ?? 0) + 1; continue; }
+    }
 
     const ts = parseTime(rec.timestamp);
     if (!subagent) {
@@ -165,6 +173,9 @@ async function parseFile(file: string, st: State, subagent: boolean): Promise<vo
       if (sub === 'compact_boundary' && ts && !subagent) s.boundaries.push({ timestamp: ts, kind: 'compaction' });
     }
   }
+  if (diag.replayedRecords) {
+    diag.warnings.push(`${diag.replayedRecords} conversation record(s) replayed from other sessions (resumed history) were excluded; they are counted in their original sessions`);
+  }
   if (lastWasMalformed) {
     diag.truncatedTail = true;
     diag.warnings.push('last line is not valid JSON (file may still be being written)');
@@ -180,8 +191,10 @@ export async function parseClaudeSession(sessionId: string, mainFile: string | u
     },
     usageByMsg: new Map(), calls: new Map(), models: new Set(),
   };
-  if (mainFile) { st.session.files.push(mainFile); await parseFile(mainFile, st, false); }
-  for (const f of subagentFiles) { st.session.files.push(f); await parseFile(f, st, true); }
+  // Records carry the ID of the session they were written in. The main file's name is that ID.
+  const ownId = mainFile ? path.basename(mainFile, '.jsonl') : sessionId;
+  if (mainFile) { st.session.files.push(mainFile); await parseFile(mainFile, st, false, ownId); }
+  for (const f of subagentFiles) { st.session.files.push(f); await parseFile(f, st, true, ownId); }
 
   const s = st.session;
   s.usage = [...st.usageByMsg.values()];

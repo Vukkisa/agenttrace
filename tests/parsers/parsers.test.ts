@@ -20,7 +20,7 @@ describe('discovery', () => {
     const r = discover({ claudeDir: path.join(FX, 'claude'), codexDir: path.join(FX, 'codex') });
     const claude = r.sessions.filter(s => s.agent === 'claude-code');
     const codex = r.sessions.filter(s => s.agent === 'codex');
-    expect(claude).toHaveLength(3);
+    expect(claude).toHaveLength(5);
     expect(codex).toHaveLength(3);
     const main = claude.find(s => s.sessionId.startsWith('1111'))!;
     expect(main.files).toHaveLength(2);
@@ -30,8 +30,41 @@ describe('discovery', () => {
 
   it('accepts the projects/ dir directly and reports missing roots', () => {
     const r = discover({ claudeDir: path.join(FX, 'claude/projects'), codexDir: path.join(FX, 'does-not-exist') });
-    expect(r.sessions.filter(s => s.agent === 'claude-code')).toHaveLength(3);
+    expect(r.sessions.filter(s => s.agent === 'claude-code')).toHaveLength(5);
     expect(r.roots.find(x => x.agent === 'codex')!.exists).toBe(false);
+  });
+});
+
+describe('resumed Claude sessions', () => {
+  const dir = path.join(FX, 'claude/projects/-home-dev-resume-app');
+  const ORIG = '44444444-4444-4444-8444-444444444444';
+  const RESUMED = '55555555-5555-4555-8555-555555555555';
+
+  it('does not count replayed history again in the resumed session', async () => {
+    const orig = await parseClaudeSession(ORIG, path.join(dir, `${ORIG}.jsonl`), []);
+    const res = await parseClaudeSession(RESUMED, path.join(dir, `${RESUMED}.jsonl`), []);
+    expect(orig.toolCalls.map(c => c.id)).toEqual(['tu_o1']);
+    expect(res.toolCalls.map(c => c.id)).toEqual(['tu_r1']); // not tu_o1
+    expect(res.usage).toHaveLength(2); // msg_r1, msg_r2 only
+    expect(res.usage.reduce((n, u) => n + u.outputTokens, 0)).toBe(80);
+    expect(orig.usage.reduce((n, u) => n + u.outputTokens, 0)).toBe(300);
+    expect(res.diagnostics[0].replayedRecords).toBe(4);
+    expect(res.diagnostics[0].warnings.join(' ')).toMatch(/replayed from other sessions/);
+    expect(orig.diagnostics[0].replayedRecords).toBeUndefined();
+  });
+
+  it('starts the resumed session at its own first record, not the replayed history', async () => {
+    const res = await parseClaudeSession(RESUMED, path.join(dir, `${RESUMED}.jsonl`), []);
+    expect(res.startTime?.toISOString()).toBe('2026-11-18T10:00:00.000Z');
+    expect(res.boundaries.filter(b => b.kind === 'user-prompt')).toHaveLength(1);
+  });
+
+  it('summing sessions counts every call and message exactly once', async () => {
+    const a = await parseClaudeSession(ORIG, path.join(dir, `${ORIG}.jsonl`), []);
+    const b = await parseClaudeSession(RESUMED, path.join(dir, `${RESUMED}.jsonl`), []);
+    const ids = [...a.toolCalls, ...b.toolCalls].map(c => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect([...a.usage, ...b.usage].reduce((n, u) => n + u.outputTokens, 0)).toBe(380);
   });
 });
 

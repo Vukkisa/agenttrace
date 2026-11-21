@@ -17,12 +17,12 @@
 - [x] **v0.1 Core** — engine, CLI, HTML report, 43 tests, verified on real sessions
 - [ ] **v0.2 Shippable** — git repo, CI, npm publish (`npx agenttrace`), cache for fast `--all`, validate Codex on real logs
   - [x] git repo + .gitignore
-  - [x] CI workflow written (not yet run on GitHub — needs push)
+  - [x] CI workflow written and passing on GitHub (4 jobs, green on `aecf2e5`)
   - [x] summary cache: `analyze --all` 7.0 s → ~0.25 s warm
   - [x] package ready (`npm pack` + install + npx tested)
   - [x] accuracy check on real sessions: fixed double counting of resumed sessions, permission-error window, weak-loop rule
   - [~] Codex real validation: 1 real session only, no token/tool events available
-  - [ ] decide npm name (`agenttrace` likely blocked by `agent-trace`), push to GitHub, publish
+  - [x] npm name `@vukkisa/agenttrace` chosen, pushed to GitHub, published as 0.2.0 (verified with `npx`)
 - [ ] **v0.3 MCP** — `agenttrace mcp`: lets Claude Code (or any MCP client) query local session analysis in chat. Next milestone; not started.
   - Tools (all read-only):
     1. `list_sessions`

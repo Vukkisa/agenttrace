@@ -2,6 +2,7 @@
   "name": "agenttrace",
   "version": "0.3.0",
   "description": "Explain local Claude Code and Codex sessions with the AgentTrace MCP server: tokens, estimated API-equivalent cost, time, failures and loops. Adds /agenttrace:agenttrace.",
+  "author": { "name": "Vukkisa", "url": "https://github.com/Vukkisa" },
   "homepage": "https://github.com/Vukkisa/agenttrace#readme",
   "repository": "https://github.com/Vukkisa/agenttrace",
   "license": "MIT",

@@ -84,7 +84,11 @@ async function parseFile(file: string, st: State, subagent: boolean, ownId: stri
     // the original session (which has its own file), so skip them instead of counting them twice.
     if (type === 'assistant' || type === 'user' || type === 'system') {
       const sid = str(rec.sessionId);
-      if (sid && sid !== ownId) { diag.replayedRecords = (diag.replayedRecords ?? 0) + 1; continue; }
+      if (sid && sid !== ownId) {
+        diag.replayedRecords = (diag.replayedRecords ?? 0) + 1;
+        if (!(diag.replayedFrom ??= []).includes(sid)) diag.replayedFrom.push(sid);
+        continue;
+      }
     }
 
     const ts = parseTime(rec.timestamp);
@@ -113,7 +117,9 @@ async function parseFile(file: string, st: State, subagent: boolean, ownId: stri
       if (isObj(msg.usage) && !synthetic) {
         // De-duplicate: later records for the same message id replace earlier ones
         // (they carry the same or more complete usage).
-        st.usageByMsg.set(id, usageFrom(msg.usage, model, ts, subagent));
+        const ur = usageFrom(msg.usage, model, ts, subagent);
+        if (str(msg.id)) ur.messageId = str(msg.id);
+        st.usageByMsg.set(id, ur);
       }
       const content = Array.isArray(msg.content) ? msg.content : [];
       for (const block of content) {

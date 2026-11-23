@@ -38,6 +38,12 @@ export function renderSessionText(a: SessionAnalysis): string {
   L.push(`End:        ${dt(a.timing.end)}`);
   L.push(`Duration:   ${formatDuration(a.timing.observedMs)} observed, ${formatDuration(a.timing.activeMs)} excluding pauses > ${formatDuration(a.timing.pauseThresholdMs)}`);
   L.push(`Cost:       ${formatUsd(a.cost.totalUsd)} API-equivalent (${a.cost.status})`);
+  const replayed = a.diagnostics.reduce((n, d) => n + (d.replayedRecords ?? 0), 0);
+  if (replayed) {
+    const from = [...new Set(a.diagnostics.flatMap(d => d.replayedFrom ?? []))].map(id => id.slice(0, 8));
+    L.push(`Note:       Resumed session. ${fmt(replayed)} copied history record(s) were excluded and count in the original session${from.length ? ` (${from.join(', ')})` : ''}.`);
+    if (!a.tokens.available) L.push('            This session has no usage of its own; look at the original session for tokens and cost.');
+  }
   L.push('');
   L.push('TOKENS' + (a.tokens.available ? '' : ': Not available in this log'));
   if (a.tokens.available) {
@@ -68,6 +74,7 @@ export function renderMultiText(m: MultiSummary): string {
   L.push('='.repeat(60));
   L.push(`Tokens: ${tokensLine(m.total)}`);
   L.push(`API-equivalent cost: ${formatUsd(m.cost.totalUsd)} (${m.cost.status})`);
+  if (m.duplicates.messages) L.push(`Note: ${fmt(m.duplicates.messages)} message(s) appear in more than one session (forked or resumed) and are counted once in these totals; per-session rows below still show each session's own numbers.`);
   if (m.cost.unknownModels.length) L.push(`Models without pricing: ${m.cost.unknownModels.join(', ')}`);
   L.push('');
   L.push('BY MODEL');

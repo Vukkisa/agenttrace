@@ -1,9 +1,12 @@
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseClaudeSession } from '../../src/parsers/claude/index.js';
 import { parseCodexSession } from '../../src/parsers/codex/index.js';
 import { analyzeSession, summarizeMany } from '../../src/analytics/analyze.js';
-import { loadPricing, resolvePrice } from '../../src/pricing/index.js';
+import { summarizeSummaries } from '../../src/analytics/summary.js';
+import { loadPricing, readPricingFile, resolvePrice } from '../../src/pricing/index.js';
 import { costForModel, summarizeCost } from '../../src/analytics/costs/index.js';
 import { summarizeTokens, emptyTotals } from '../../src/analytics/tokens/index.js';
 import { analyzeTiming } from '../../src/analytics/timing/index.js';
@@ -80,6 +83,72 @@ describe('pricing and cost', () => {
 
   it('reports cost as unavailable when no usage exists', () => {
     expect(summarizeCost(summarizeTokens([]), pricing).status).toBe('unavailable');
+  });
+});
+
+describe('long-context pricing (Haiku 5.5)', () => {
+  const rec = (model: string, o: Partial<{ i: number; o: number; cr: number; cw: number }>) => ({
+    model, inputTokens: o.i ?? 0, outputTokens: o.o ?? 0, cacheReadTokens: o.cr ?? 0, cacheWriteTokens: o.cw ?? 0,
+    cacheWrite5mTokens: o.cw ?? 0, cacheWrite1hTokens: 0, source: 'per-message' as const,
+  });
+  const H = 'claude-haiku-5-5';
+  const cost = (usage: ReturnType<typeof rec>[]) => summarizeCost(summarizeTokens(usage), pricing).byModel[0];
+
+  it('has long-context rates only where documented', () => {
+    expect(resolvePrice(pricing, H)?.longContext).toEqual({ inputPerMTok: 0.5, outputPerMTok: 2.5, cacheReadPerMTok: 0.05, cacheWrite5mPerMTok: 0.625, cacheWrite1hPerMTok: 1 });
+    expect(resolvePrice(pricing, 'claude-sonnet-5-5')?.longContext).toBeUndefined();
+  });
+
+  it('prices a request at the standard rate at or below 100K prompt tokens', () => {
+    const c = cost([rec(H, { i: 1_000, cr: 99_000, o: 1_000_000 })]); // prompt = exactly 100,000
+    expect(c.breakdown!.output).toBeCloseTo(0.5);
+    expect(c.breakdown!.cacheRead).toBeCloseTo(99_000 * 0.01 / 1e6);
+    expect(c.assumptions.join(' ')).not.toMatch(/long-context/);
+  });
+
+  it('prices every token of a request above 100K prompt tokens at the long-context rate', () => {
+    const c = cost([rec(H, { i: 1_001, cr: 99_000, cw: 10_000, o: 1_000_000 })]);
+    expect(c.breakdown!.input).toBeCloseTo(1_001 * 0.5 / 1e6);
+    expect(c.breakdown!.output).toBeCloseTo(2.5);
+    expect(c.breakdown!.cacheRead).toBeCloseTo(99_000 * 0.05 / 1e6);
+    expect(c.breakdown!.cacheWrite).toBeCloseTo(10_000 * 0.625 / 1e6);
+    expect(c.assumptions.join(' ')).toMatch(/1 request\(s\) with prompts over 100,000 tokens/);
+  });
+
+  it('decides per request, not per session', () => {
+    const c = cost([rec(H, { cr: 50_000, o: 1_000_000 }), rec(H, { cr: 200_000, o: 1_000_000 })]);
+    expect(c.breakdown!.output).toBeCloseTo(0.5 + 2.5);
+    expect(c.breakdown!.cacheRead).toBeCloseTo((50_000 * 0.01 + 200_000 * 0.05) / 1e6);
+  });
+
+  it('leaves models without long-context rates untouched', () => {
+    const c = cost([rec('claude-sonnet-5-5', { cr: 500_000, o: 1_000_000 })]);
+    expect(c.breakdown!.output).toBeCloseTo(10);
+    expect(c.breakdown!.cacheRead).toBeCloseTo(500_000 * 0.1 / 1e6);
+  });
+
+  it('keeps token totals unchanged and survives aggregation across sessions', () => {
+    const u = [rec(H, { cr: 200_000, o: 1_000_000 })];
+    const a = summarizeTokens(u);
+    expect(a.byModel[H].output).toBe(1_000_000);
+    expect(a.longByModel![H].output).toBe(1_000_000);
+    const one = (id: string) => ({ agent: 'claude-code' as const, sessionId: id, models: [H], tokens: { available: true, total: a.total, byModel: a.byModel, byDay: a.byDay, longByModel: a.longByModel }, toolCalls: 0, failed: 0, files: 1, detection: { key: '', findings: 0, loops: 0 } });
+    const m = summarizeSummaries([one('a'), one('b')], pricing);
+    expect(m.cost.totalUsd).toBeCloseTo(2 * (2.5 + 200_000 * 0.05 / 1e6));
+    expect(m.sessions[0].costUsd).toBeCloseTo(2.5 + 200_000 * 0.05 / 1e6);
+  });
+
+  it('accepts longContext in a user pricing file and rejects bad values', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'at-price-'));
+    const write = (lc: unknown) => {
+      const f = path.join(dir, `p${Math.random()}.json`);
+      fs.writeFileSync(f, JSON.stringify({ models: [{ model: 'my/m', inputPerMTok: 1, outputPerMTok: 2, longContext: lc }] }));
+      return f;
+    };
+    const ok = readPricingFile(write({ inputPerMTok: 5, outputPerMTok: 10, cacheReadPerMTok: 0.5 }));
+    expect(ok[0].longContext).toEqual({ inputPerMTok: 5, outputPerMTok: 10, cacheReadPerMTok: 0.5, cacheWrite5mPerMTok: undefined, cacheWrite1hPerMTok: undefined });
+    expect(() => readPricingFile(write({ inputPerMTok: -1, outputPerMTok: 1 }))).toThrow(/longContext\.inputPerMTok/);
+    expect(() => readPricingFile(write({ outputPerMTok: 1 }))).toThrow(/longContext\.inputPerMTok/);
   });
 });
 
@@ -258,5 +327,84 @@ describe('redaction', () => {
   it('redacts common secrets', () => {
     const s = redact('curl -H "Authorization: Bearer abcdefghijklmnopqrstuvwxyz123" -d api_key=supersecret123 sk-ant-api03-AAAAAAAAAAAAAAAA ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaa AKIAABCDEFGHIJKLMNOP');
     expect(s).not.toMatch(/abcdefghijklmnopqrstuvwxyz123|supersecret123|sk-ant-api03|ghp_a|AKIAABCD/);
+  });
+});
+
+describe('cross-session de-duplication', () => {
+  const S = 'claude-sonnet-5-5';
+  const u = (id: string, o: number, day = new Date('2026-11-10T10:00:00')) => ({
+    model: S, messageId: id, timestamp: day, inputTokens: 10, outputTokens: o, cacheReadTokens: 1000, cacheWriteTokens: 100,
+    cacheWrite5mTokens: 0, cacheWrite1hTokens: 100, source: 'per-message' as const,
+  });
+  const summary = (sid: string, start: string, usage: ReturnType<typeof u>[], agent: 'claude-code' | 'codex' = 'claude-code') => {
+    const t = summarizeTokens(usage);
+    return {
+      agent, sessionId: sid, start: new Date(start), models: [S],
+      tokens: { available: true, total: t.total, byModel: t.byModel, byDay: t.byDay, longByModel: t.longByModel, ledger: t.ledger },
+      toolCalls: 0, failed: 0, files: 1, detection: { key: '', findings: 0, loops: 0 },
+    };
+  };
+
+  it('counts a message shared by two sessions once in the totals', () => {
+    const a = summary('orig', '2026-11-10T09:00:00Z', [u('m1', 100), u('m2', 200)]);
+    const b = summary('fork', '2026-11-11T09:00:00Z', [u('m2', 200), u('m3', 300)]);
+    const m = summarizeSummaries([a, b], pricing);
+    expect(m.total.output).toBe(600);
+    expect(m.total.cacheRead).toBe(3000);
+    expect(m.total.records).toBe(3);
+    expect(m.byModel[S].output).toBe(600);
+    expect(Object.values(m.byDay).reduce((n, t) => n + t.output, 0)).toBe(600);
+    expect(m.duplicates).toEqual({ messages: 1, sessions: 1 });
+    expect(m.cost.totalUsd).toBeCloseTo(600 * 10 / 1e6 + 30 * 2 / 1e6 + 3000 * 0.1 / 1e6 + 300 * 4 / 1e6);
+  });
+
+  it('leaves per-session numbers untouched', () => {
+    const a = summary('orig', '2026-11-10T09:00:00Z', [u('m1', 100), u('m2', 200)]);
+    const b = summary('fork', '2026-11-11T09:00:00Z', [u('m2', 200), u('m3', 300)]);
+    const m = summarizeSummaries([a, b], pricing);
+    expect(m.sessions.map(s => s.tokens.output)).toEqual([300, 500]);
+  });
+
+  it('keeps the message in the earliest session regardless of input order', () => {
+    const a = summary('orig', '2026-11-10T09:00:00Z', [u('m1', 100), u('m2', 200)]);
+    const b = summary('fork', '2026-11-11T09:00:00Z', [u('m2', 200), u('m3', 300)]);
+    const fwd = summarizeSummaries([a, b], pricing);
+    const rev = summarizeSummaries([b, a], pricing);
+    expect(rev.total).toEqual(fwd.total);
+    expect(rev.cost.totalUsd).toBeCloseTo(fwd.cost.totalUsd!);
+  });
+
+  it('does nothing when no message is shared', () => {
+    const a = summary('a', '2026-11-10T09:00:00Z', [u('m1', 100)]);
+    const b = summary('b', '2026-11-11T09:00:00Z', [u('m2', 200)]);
+    const m = summarizeSummaries([a, b], pricing);
+    expect(m.duplicates).toEqual({ messages: 0, sessions: 0 });
+    expect(m.total.output).toBe(300);
+  });
+
+  it('removes a shared long-context request from the long-context bucket too', () => {
+    const H = 'claude-haiku-5-5';
+    const big = { ...u('m1', 1_000_000), model: H, cacheReadTokens: 200_000 };
+    const a = summary('a', '2026-11-10T09:00:00Z', [big]);
+    const b = summary('b', '2026-11-11T09:00:00Z', [big]);
+    const single = summarizeSummaries([a], pricing).cost.totalUsd;
+    expect(summarizeSummaries([a, b], pricing).cost.totalUsd).toBeCloseTo(single!);
+  });
+
+  it('does not treat the same id under different agents as shared, and works without ledgers', () => {
+    const a = summary('a', '2026-11-10T09:00:00Z', [u('x', 100)]);
+    const b = summary('b', '2026-11-11T09:00:00Z', [u('x', 100)], 'codex');
+    expect(summarizeSummaries([a, b], pricing).total.output).toBe(200);
+    const noLedger = { ...a, tokens: { ...a.tokens, ledger: undefined } };
+    expect(summarizeSummaries([noLedger, noLedger], pricing).total.output).toBe(200);
+  });
+
+  it('keeps the ledger out of JSON output and records message ids from the parser', async () => {
+    const t = summarizeTokens([u('m1', 5)]);
+    expect(JSON.stringify(t)).not.toContain('ledger');
+    expect(t.ledger).toHaveLength(1);
+    const res = await parseClaudeSession('11111111-1111-4111-8111-111111111111', CLAUDE_MAIN, [CLAUDE_SUB]);
+    expect(res.usage.length).toBeGreaterThan(0);
+    expect(res.usage.every(r => typeof r.messageId === 'string' && r.messageId.startsWith('msg_'))).toBe(true);
   });
 });

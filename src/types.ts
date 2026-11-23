@@ -25,6 +25,8 @@ export interface UsageRecord {
   reasoningTokens?: number;
   /** How this record was derived. */
   source: 'per-message' | 'cumulative-delta' | 'last-turn';
+  /** Provider message id (Claude). Used to avoid counting a message twice across sessions. */
+  messageId?: string;
   /** True if the record belongs to a Claude Code subagent transcript. */
   subagent?: boolean;
 }
@@ -85,6 +87,8 @@ export interface ParserDiagnostics {
    * are excluded here so tokens, calls and findings are not counted twice.
    */
   replayedRecords?: number;
+  /** Session ids the replayed records belong to (ids only, no paths). */
+  replayedFrom?: string[];
   warnings: string[];
 }
 

@@ -160,6 +160,17 @@ describe('plugin manifest and MCP config', () => {
     expect(readme).toMatch(/duplicate/i);
   });
 
+  it('lists the plugin in a marketplace file whose version matches', () => {
+    const mk = readJson(join(ROOT, '.claude-plugin/marketplace.json'));
+    expect(mk.name).toBe('agenttrace');
+    expect(mk.plugins).toHaveLength(1);
+    const p = mk.plugins[0];
+    expect(p.name).toBe('agenttrace');
+    expect(p.source).toBe('./plugins/agenttrace');
+    expect(existsSync(join(ROOT, p.source, '.claude-plugin/plugin.json'))).toBe(true);
+    expect(p.version).toBe(pkg.version);
+  });
+
   it('has no commands/ copy that could drift from the skill', () => {
     expect(existsSync(join(PLUGIN, 'commands'))).toBe(false);
   });

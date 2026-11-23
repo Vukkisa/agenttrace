@@ -16,6 +16,10 @@ Everything runs offline. Nothing is uploaded, no LLM is used, no API key is need
 
 *Example report generated from synthetic test data: [`examples/example-report.html`](examples/example-report.html).*
 
+![Example terminal output (synthetic data)](docs/demo-terminal.svg)
+
+*Terminal output for the same synthetic session: tokens and cost per model, tool failures, and a repeated-failure finding with its evidence.*
+
 ## Features
 
 - **Two agents, one model.** Claude Code transcripts (including subagents) and Codex rollouts (current, VS Code/app-server and legacy formats, plain or `.jsonl.zst`) are normalized into one session model.
@@ -182,6 +186,13 @@ It never overwrites a different existing skill unless you pass `--force` (the ol
 
 ```bash
 claude --plugin-dir ./plugins/agenttrace
+```
+
+To install it from this repository without cloning, add it as a marketplace inside Claude Code:
+
+```
+/plugin marketplace add Vukkisa/agenttrace
+/plugin install agenttrace@agenttrace
 ```
 
 Plugin skills are namespaced, so the commands are `/agenttrace:agenttrace`, `/agenttrace:agenttrace latest`, and so on. The plugin starts its own MCP server, so don't enable it alongside a manual `agenttrace` registration. You'd get two servers with the same tools. See the [plugin README](plugins/agenttrace/README.md) for details and removal.

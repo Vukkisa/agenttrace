@@ -21,7 +21,7 @@ import type { SessionRef } from '../types.js';
 import type { SessionSummary } from '../analytics/summary.js';
 import { PARSER_VERSION, VERSION } from '../version.js';
 
-export const CACHE_SCHEMA_VERSION = 1;
+export const CACHE_SCHEMA_VERSION = 3;
 export const CACHE_FILE = 'summaries.json';
 /** A file modified this close to (or after) the entry's computation time is never trusted. */
 export const RACY_MS = 2_000;

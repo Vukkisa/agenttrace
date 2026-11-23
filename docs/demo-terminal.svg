@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="868" height="653" viewBox="0 0 868 653" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13">
+<title>AgentTrace terminal output (synthetic data)</title>
+<rect width="868" height="653" rx="10" fill="#0d1117"/>
+<rect width="868" height="28" rx="10" fill="#161b22"/>
+<circle cx="18" cy="14" r="5" fill="#ff5f56"/><circle cx="36" cy="14" r="5" fill="#ffbd2e"/><circle cx="54" cy="14" r="5" fill="#27c93f"/>
+<text x="18" y="65" fill="#7ee787" xml:space="preserve">$ agenttrace analyze --latest</text>
+<text x="18" y="84" fill="#c9d1d9" xml:space="preserve">AgentTrace — claude-code session 11111111-1111-4111-8111-111111111111</text>
+<text x="18" y="103" fill="#484f58" xml:space="preserve">============================================================</text>
+<text x="18" y="122" fill="#c9d1d9" xml:space="preserve">Project:    /home/dev/demo-app (branch feature/auth)</text>
+<text x="18" y="141" fill="#c9d1d9" xml:space="preserve">Models:     claude-sonnet-5-5, claude-opus-5-5, claude-haiku-5-5</text>
+<text x="18" y="160" fill="#c9d1d9" xml:space="preserve">Start:      11/19/2026, 4:00:00 PM</text>
+<text x="18" y="179" fill="#c9d1d9" xml:space="preserve">End:        11/19/2026, 4:30:30 PM</text>
+<text x="18" y="198" fill="#c9d1d9" xml:space="preserve">Duration:   30m 30s observed, 15m 0s excluding pauses &gt; 5m 0s</text>
+<text x="18" y="217" fill="#c9d1d9" xml:space="preserve">Cost:       $0.09 API-equivalent (complete)</text>
+<text x="18" y="236" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="255" fill="#79c0ff" xml:space="preserve">TOKENS</text>
+<text x="18" y="274" fill="#c9d1d9" xml:space="preserve">  Total: in 79 · out 815 · cache read 423,700 · cache write 9,500</text>
+<text x="18" y="293" fill="#c9d1d9" xml:space="preserve">  claude-sonnet-5-5: in 71 · out 490 · cache read 392,700 · cache write 7,000 → $0.06</text>
+<text x="18" y="312" fill="#c9d1d9" xml:space="preserve">  claude-opus-5-5: in 5 · out 300 · cache read 30,000 · cache write 2,000 → $0.02</text>
+<text x="18" y="331" fill="#c9d1d9" xml:space="preserve">  claude-haiku-5-5: in 3 · out 25 · cache read 1,000 · cache write 500 → &lt;$0.01</text>
+<text x="18" y="350" fill="#c9d1d9" xml:space="preserve">  Of which subagents: in 3 · out 25 · cache read 1,000 · cache write 500</text>
+<text x="18" y="369" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="388" fill="#79c0ff" xml:space="preserve">TOOLS: 14 calls, 5 failed, 1 interrupted</text>
+<text x="18" y="407" fill="#c9d1d9" xml:space="preserve">  Bash                             7 calls  5 failed</text>
+<text x="18" y="426" fill="#c9d1d9" xml:space="preserve">  Read                             5 calls</text>
+<text x="18" y="445" fill="#c9d1d9" xml:space="preserve">  Grep                             1 calls</text>
+<text x="18" y="464" fill="#c9d1d9" xml:space="preserve">  Edit                             1 calls</text>
+<text x="18" y="483" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="18" y="502" fill="#79c0ff" xml:space="preserve">FINDINGS</text>
+<text x="18" y="521" fill="#ffa657" xml:space="preserve">  REPEATED FAILURE DETECTED  [measured]  Same test command failed repeatedly</text>
+<text x="18" y="540" fill="#c9d1d9" xml:space="preserve">    Subject:     pytest tests/test_auth.py</text>
+<text x="18" y="559" fill="#c9d1d9" xml:space="preserve">    Occurrences: 6 (5 failed)</text>
+<text x="18" y="578" fill="#c9d1d9" xml:space="preserve">    Time range:  Nov 19, 04:02 PM–Nov 19, 04:11 PM (9m 30s)</text>
+<text x="18" y="597" fill="#c9d1d9" xml:space="preserve">    Later success: yes</text>
+<text x="18" y="616" fill="#c9d1d9" xml:space="preserve">    Recommendation: Inspect the original test failure output before re-running the same test again.</text>
+<text x="18" y="635" fill="#c9d1d9" xml:space="preserve">  …</text>
+</svg>

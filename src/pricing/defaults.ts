@@ -38,7 +38,11 @@ export const DEFAULT_PRICES: PriceEntry[] = [
   anthropic('claude-sonnet-5-5', 2, 10, 0.1, false),
   anthropic('claude-sonnet-5', 2, 10, 0.2, true),
   anthropic('claude-sonnet-4-6', 3, 15, 0.3, true),
-  anthropic('claude-haiku-5-5', 0.1, 0.5, 0.01, true),
+  {
+    ...anthropic('claude-haiku-5-5', 0.1, 0.5, 0.01, true),
+    // Prompts over 100K tokens (cache reads and writes included) pay these rates on every token.
+    longContext: { inputPerMTok: 0.5, outputPerMTok: 2.5, cacheReadPerMTok: 0.05, cacheWrite5mPerMTok: 0.625, cacheWrite1hPerMTok: 1 },
+  },
   anthropic('claude-haiku-4-5', 1, 5, 0.1, true),
   // OpenAI models commonly used by Codex. Older list prices; verify before relying on them.
   {

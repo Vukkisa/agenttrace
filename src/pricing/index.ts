@@ -8,6 +8,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { DEFAULT_PRICES } from './defaults.js';
 
+export const LONG_CONTEXT_THRESHOLD_TOKENS = 100_000;
+
+export interface LongContextPrice {
+  inputPerMTok: number;
+  outputPerMTok: number;
+  cacheReadPerMTok?: number;
+  cacheWrite5mPerMTok?: number;
+  cacheWrite1hPerMTok?: number;
+}
+
 export interface PriceEntry {
   model: string;
   aliases?: string[];
@@ -17,6 +27,11 @@ export interface PriceEntry {
   /** Price for cache writes when the 5m/1h split is unknown, or 5-minute writes. */
   cacheWrite5mPerMTok?: number;
   cacheWrite1hPerMTok?: number;
+  /**
+   * Long-context rates. Applied per request, to every token of a request whose prompt
+   * (input + cache read + cache write) exceeds LONG_CONTEXT_THRESHOLD_TOKENS.
+   */
+  longContext?: LongContextPrice;
   source: string;
   lastUpdated: string;
   notes?: string;
@@ -41,6 +56,23 @@ function validate(e: unknown, file: string, i: number): PriceEntry {
   for (const k of ['cacheReadPerMTok', 'cacheWrite5mPerMTok', 'cacheWrite1hPerMTok']) {
     if (o[k] !== undefined && (typeof o[k] !== 'number' || (o[k] as number) < 0)) throw bad(`"${k}" must be a non-negative number`);
   }
+  let longContext: LongContextPrice | undefined;
+  if (o.longContext !== undefined) {
+    const l = o.longContext as Record<string, unknown>;
+    if (!l || typeof l !== 'object') throw bad('"longContext" must be an object');
+    for (const k of ['inputPerMTok', 'outputPerMTok']) {
+      if (typeof l[k] !== 'number' || (l[k] as number) < 0) throw bad(`"longContext.${k}" must be a non-negative number`);
+    }
+    for (const k of ['cacheReadPerMTok', 'cacheWrite5mPerMTok', 'cacheWrite1hPerMTok']) {
+      if (l[k] !== undefined && (typeof l[k] !== 'number' || (l[k] as number) < 0)) throw bad(`"longContext.${k}" must be a non-negative number`);
+    }
+    longContext = {
+      inputPerMTok: l.inputPerMTok as number, outputPerMTok: l.outputPerMTok as number,
+      cacheReadPerMTok: l.cacheReadPerMTok as number | undefined,
+      cacheWrite5mPerMTok: l.cacheWrite5mPerMTok as number | undefined,
+      cacheWrite1hPerMTok: l.cacheWrite1hPerMTok as number | undefined,
+    };
+  }
   return {
     model: o.model,
     aliases: Array.isArray(o.aliases) ? o.aliases.filter((a): a is string => typeof a === 'string') : [],
@@ -49,6 +81,7 @@ function validate(e: unknown, file: string, i: number): PriceEntry {
     cacheReadPerMTok: o.cacheReadPerMTok as number | undefined,
     cacheWrite5mPerMTok: o.cacheWrite5mPerMTok as number | undefined,
     cacheWrite1hPerMTok: o.cacheWrite1hPerMTok as number | undefined,
+    longContext,
     source: typeof o.source === 'string' ? o.source : `user file ${file}`,
     lastUpdated: typeof o.lastUpdated === 'string' ? o.lastUpdated : 'unknown',
     notes: typeof o.notes === 'string' ? o.notes : undefined,

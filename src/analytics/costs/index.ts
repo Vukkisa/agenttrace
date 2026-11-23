@@ -2,7 +2,7 @@
  * API-equivalent cost = tokens x public list price. Never an actual bill.
  * A model's cost is computed only when every token category it used has a price.
  */
-import { resolvePrice, type PriceEntry, type PricingTable } from '../../pricing/index.js';
+import { LONG_CONTEXT_THRESHOLD_TOKENS, resolvePrice, type PriceEntry, type PricingTable } from '../../pricing/index.js';
 import type { TokenSummary, TokenTotals } from '../tokens/index.js';
 
 export const COST_DISCLAIMER =
@@ -31,7 +31,27 @@ export interface CostSummary {
 
 const M = 1_000_000;
 
-export function costForModel(model: string, t: TokenTotals, table: PricingTable): ModelCost {
+function sub(a: TokenTotals, b: TokenTotals): TokenTotals {
+  const o = { ...a };
+  for (const k of Object.keys(o) as (keyof TokenTotals)[]) o[k] = a[k] - b[k];
+  return o;
+}
+
+/** Tokens x rates for one tier. Returns the USD breakdown. */
+function tierCost(t: TokenTotals, r: { in: number; out: number; cr: number; w5: number; w1: number }) {
+  return {
+    input: (t.input * r.in) / M,
+    output: (t.output * r.out) / M,
+    cacheRead: (t.cacheRead * r.cr) / M,
+    cacheWrite: ((t.cacheWrite5m + t.cacheWriteUnsplit) * r.w5 + t.cacheWrite1h * r.w1) / M,
+  };
+}
+
+/**
+ * `long` is the subset of `t` made of requests above the long-context threshold. When the model has
+ * long-context rates, that subset is priced at them and the rest at the standard rates.
+ */
+export function costForModel(model: string, t: TokenTotals, table: PricingTable, long?: TokenTotals): ModelCost {
   const price = resolvePrice(table, model);
   const assumptions: string[] = [];
   if (!price) return { model, status: 'unknown-model', assumptions };
@@ -43,19 +63,26 @@ export function costForModel(model: string, t: TokenTotals, table: PricingTable)
   if (missing.length) return { model, status: 'missing-price-component', price, missing, assumptions };
   if (t.cacheWriteUnsplit > 0) assumptions.push(`${t.cacheWriteUnsplit} cache-write tokens had no 5m/1h split; priced at the 5m rate`);
   if (price.notes) assumptions.push(price.notes);
-  const breakdown = {
-    input: (t.input * price.inputPerMTok) / M,
-    output: (t.output * price.outputPerMTok) / M,
-    cacheRead: (t.cacheRead * (price.cacheReadPerMTok ?? 0)) / M,
-    cacheWrite: ((t.cacheWrite5m + t.cacheWriteUnsplit) * (price.cacheWrite5mPerMTok ?? 0) + t.cacheWrite1h * (price.cacheWrite1hPerMTok ?? 0)) / M,
-  };
+  const std = { in: price.inputPerMTok, out: price.outputPerMTok, cr: price.cacheReadPerMTok ?? 0, w5: price.cacheWrite5mPerMTok ?? 0, w1: price.cacheWrite1hPerMTok ?? 0 };
+  let breakdown = tierCost(t, std);
+  const lc = price.longContext;
+  if (lc && long && long.records > 0) {
+    const lr = {
+      in: lc.inputPerMTok, out: lc.outputPerMTok, cr: lc.cacheReadPerMTok ?? std.cr,
+      w5: lc.cacheWrite5mPerMTok ?? std.w5, w1: lc.cacheWrite1hPerMTok ?? std.w1,
+    };
+    const a = tierCost(sub(t, long), std);
+    const b = tierCost(long, lr);
+    breakdown = { input: a.input + b.input, output: a.output + b.output, cacheRead: a.cacheRead + b.cacheRead, cacheWrite: a.cacheWrite + b.cacheWrite };
+    assumptions.push(`${long.records} request(s) with prompts over ${LONG_CONTEXT_THRESHOLD_TOKENS.toLocaleString('en-US')} tokens priced at long-context rates`);
+  }
   const costUsd = breakdown.input + breakdown.output + breakdown.cacheRead + breakdown.cacheWrite;
   return { model, status: 'complete', costUsd, breakdown, price, assumptions };
 }
 
 export function summarizeCost(tokens: TokenSummary, table: PricingTable): CostSummary {
   if (!tokens.available) return { status: 'unavailable', byModel: [], unknownModels: [], disclaimer: COST_DISCLAIMER };
-  const byModel = Object.entries(tokens.byModel).map(([m, t]) => costForModel(m, t, table));
+  const byModel = Object.entries(tokens.byModel).map(([m, t]) => costForModel(m, t, table, tokens.longByModel?.[m]));
   const complete = byModel.filter(c => c.status === 'complete');
   const unknownModels = byModel.filter(c => c.status !== 'complete').map(c => c.model);
   const status: CostSummary['status'] = complete.length === 0 ? 'unavailable' : complete.length === byModel.length ? 'complete' : 'partial';

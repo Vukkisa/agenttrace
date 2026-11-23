@@ -1,4 +1,5 @@
 import type { UsageRecord } from '../../types.js';
+import { LONG_CONTEXT_THRESHOLD_TOKENS } from '../../pricing/index.js';
 
 export interface TokenTotals {
   input: number;
@@ -18,9 +19,30 @@ export interface TokenSummary {
   total: TokenTotals;
   byModel: Record<string, TokenTotals>;
   byDay: Record<string, TokenTotals>;
+  /** Per model: only the requests whose prompt exceeded the long-context threshold (a subset of byModel). */
+  longByModel?: Record<string, TokenTotals>;
   subagent: TokenTotals;
+  /**
+   * Per-message ledger (non-enumerable: it is kept for cross-session de-duplication and is not
+   * part of JSON output).
+   */
+  ledger?: LedgerRow[];
   /** How usage was derived, e.g. per-message (Claude) or cumulative-delta (Codex). */
   sources: string[];
+}
+
+/**
+ * One usage record in compact form, kept so the same provider message is not counted twice when
+ * sessions are added up (forked or resumed sessions can contain the same message under two ids).
+ * [messageId, model, day, input, output, cacheRead, cacheWrite, cacheWrite5m, cacheWrite1h, reasoning, long]
+ */
+export type LedgerRow = [string, string, string, number, number, number, number, number, number, number, 0 | 1];
+
+export function ledgerRowToRecord(r: LedgerRow): UsageRecord {
+  return {
+    model: r[1], inputTokens: r[3], outputTokens: r[4], cacheReadTokens: r[5], cacheWriteTokens: r[6],
+    cacheWrite5mTokens: r[7], cacheWrite1hTokens: r[8], reasoningTokens: r[9], source: 'per-message', messageId: r[0],
+  };
 }
 
 export const UNKNOWN_MODEL = '(model not recorded)';
@@ -61,15 +83,22 @@ export function summarizeTokens(usage: UsageRecord[]): TokenSummary {
   const subagent = emptyTotals();
   const byModel: Record<string, TokenTotals> = {};
   const byDay: Record<string, TokenTotals> = {};
+  const longByModel: Record<string, TokenTotals> = {};
   const sources = new Set<string>();
+  const ledger: LedgerRow[] = [];
   for (const u of usage) {
     addRecord(total, u);
     if (u.subagent) addRecord(subagent, u);
     const m = u.model ?? UNKNOWN_MODEL;
     addRecord((byModel[m] ??= emptyTotals()), u);
+    const isLong = u.inputTokens + u.cacheReadTokens + u.cacheWriteTokens > LONG_CONTEXT_THRESHOLD_TOKENS;
+    if (isLong) addRecord((longByModel[m] ??= emptyTotals()), u);
     const day = u.timestamp ? localDay(u.timestamp) : '(no timestamp)';
     addRecord((byDay[day] ??= emptyTotals()), u);
     sources.add(u.source);
+    if (u.messageId) ledger.push([u.messageId, m, day, u.inputTokens, u.outputTokens, u.cacheReadTokens, u.cacheWriteTokens, u.cacheWrite5mTokens ?? 0, u.cacheWrite1hTokens ?? 0, u.reasoningTokens ?? 0, isLong ? 1 : 0]);
   }
-  return { available: usage.length > 0, total, byModel, byDay, subagent, sources: [...sources] };
+  const out: TokenSummary = { available: usage.length > 0, total, byModel, byDay, longByModel, subagent, sources: [...sources] };
+  Object.defineProperty(out, 'ledger', { value: ledger, enumerable: false, writable: true });
+  return out;
 }

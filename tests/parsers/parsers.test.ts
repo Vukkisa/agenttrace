@@ -50,6 +50,7 @@ describe('resumed Claude sessions', () => {
     expect(orig.usage.reduce((n, u) => n + u.outputTokens, 0)).toBe(300);
     expect(res.diagnostics[0].replayedRecords).toBe(4);
     expect(res.diagnostics[0].warnings.join(' ')).toMatch(/replayed from other sessions/);
+    expect(res.diagnostics[0].replayedFrom).toEqual([ORIG]);
     expect(orig.diagnostics[0].replayedRecords).toBeUndefined();
   });
 

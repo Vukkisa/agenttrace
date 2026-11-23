@@ -1,6 +1,6 @@
 {
   "name": "@vukkisa/agenttrace",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local-first CLI that analyzes Claude Code and Codex session logs: tokens, API-equivalent cost, time, failed tool calls, repeated failures and possible loops. Offline, no LLM, no telemetry.",
   "license": "MIT",
   "repository": {

@@ -9,7 +9,7 @@
       "name": "agenttrace",
       "source": "./plugins/agenttrace",
       "description": "AgentTrace MCP server plus the /agenttrace skill. Explains a local session: tokens, estimated API-equivalent cost, time, tool errors, repeated failures and possible loops. No cloud, no LLM API.",
-      "version": "0.3.0"
+      "version": "0.3.1"
     }
   ]
 }

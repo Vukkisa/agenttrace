@@ -29,7 +29,7 @@ A plugin skill is namespaced, so the command is:
 
 Want the short `/agenttrace` instead? Install the standalone skill (see the main README), which gives the exact name without a namespace.
 
-The plugin starts the MCP server `agenttrace`, pinned to `@vukkisa/agenttrace@0.3.0`. Its tools appear as `mcp__plugin_agenttrace_agenttrace__*`. Bump the pin in `.mcp.json` when a new AgentTrace version is released.
+The plugin starts the MCP server `agenttrace`, pinned to `@vukkisa/agenttrace@0.3.1`. Its tools appear as `mcp__plugin_agenttrace_agenttrace__*`. Bump the pin in `.mcp.json` when a new AgentTrace version is released.
 
 ## Avoid duplicate servers
 

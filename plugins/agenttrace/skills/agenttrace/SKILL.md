@@ -50,7 +50,7 @@ Use these sections in this order, short and in plain language. Skip a section th
 
 1. **Session highlight**: the single most important fact, in one sentence.
 2. **Usage**: model, input, output and cache tokens, and the estimated API-equivalent cost.
-3. **Time**: observed duration, estimated active time, and how many long pauses.
+3. **Time**: observed duration (Measured), estimated active time (Estimated), and how many long pauses (Estimated, because it depends on the pause threshold).
 4. **Agent activity**: tool calls, failed calls, and the most-used tools.
 5. **Problems**: repeated failures and possible loops, each with its evidence.
 6. **What this means**: two or three sentences of practical explanation.
@@ -73,6 +73,7 @@ Use the `kind` field on durations when it is present.
 - Never say time was wasted unless a finding's evidence supports it, and then say how much the tool estimated. If the estimated time in repeated failures is zero, don't mention waste.
 - If there are no findings, say "no repeated failures or loops detected". Do not invent problems, advice or recommendations.
 - If a figure isn't in the tool output, say it isn't available. Don't guess or compute it from other numbers.
+- Report the token `total` exactly as the tool returns it. Never add token fields together yourself.
 - A failed call is not a problem on its own. Mention failures only as counts unless a finding exists.
 - The latest session may be the one you are running in, so its numbers can be partial. Say so when it is likely.
 

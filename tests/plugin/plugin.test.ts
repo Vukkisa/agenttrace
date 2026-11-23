@@ -49,6 +49,11 @@ describe('skill frontmatter and structure', () => {
     }
   });
 
+  it('labels long pauses Estimated and never sums tokens itself', () => {
+    expect(body).toMatch(/long pauses \(Estimated/);
+    expect(body).toMatch(/Never add token fields together yourself/);
+  });
+
   it('defines Measured, Estimated and Heuristic labels', () => {
     for (const l of ['Measured', 'Estimated', 'Heuristic']) expect(body).toContain(`**${l}**`);
   });

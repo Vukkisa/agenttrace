@@ -63,7 +63,8 @@ describe('actions and tool mappings', () => {
   const row = (action: string) => body.split('\n').find(l => l.startsWith(`| ${action} `)) ?? '';
 
   it('maps each action to the right tool', () => {
-    expect(row('(empty)')).toContain('analyze_session');
+    expect(row('(empty)')).toContain('list_sessions');
+    expect(row('(empty)')).not.toContain('analyze_session');
     expect(row('`latest`')).toContain('analyze_session');
     expect(row('`latest`')).toContain('get_failures');
     expect(row('`sessions`')).toContain('list_sessions');

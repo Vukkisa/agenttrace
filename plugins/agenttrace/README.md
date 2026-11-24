@@ -20,6 +20,7 @@ A plugin skill is namespaced, so the command is:
 
 ```
 /agenttrace:agenttrace
+/agenttrace:agenttrace          # lists recent sessions to pick from
 /agenttrace:agenttrace latest
 /agenttrace:agenttrace sessions
 /agenttrace:agenttrace failures

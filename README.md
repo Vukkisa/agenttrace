@@ -16,7 +16,7 @@ Everything runs offline. Nothing is uploaded, no LLM is used, no API key is need
 
 *Example report generated from synthetic test data: [`examples/example-report.html`](examples/example-report.html).*
 
-![Example terminal output (synthetic data)](docs/demo-terminal.svg)
+![Example terminal output (synthetic data)](docs/demo-terminal.png)
 
 *Terminal output for the same synthetic session: tokens and cost per model, tool failures, and a repeated-failure finding with its evidence.*
 
@@ -164,7 +164,8 @@ A skill turns the four tools into a ready-made session report (highlight, usage,
 
 | Command | Does |
 |---|---|
-| `/agenttrace` | Short report on the latest session |
+| `/agenttrace` | Lists recent sessions to pick from |
+| `/agenttrace <id>` | Report on that session |
 | `/agenttrace latest` | Full report on the latest session |
 | `/agenttrace sessions` | List the 10 most recent sessions |
 | `/agenttrace failures` | Repeated failures and possible loops in the latest session |

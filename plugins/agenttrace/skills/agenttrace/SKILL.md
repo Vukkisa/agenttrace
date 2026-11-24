@@ -1,7 +1,7 @@
 ---
 name: agenttrace
-description: Explain a local Claude Code or Codex coding session with the AgentTrace MCP tools - tokens, estimated API-equivalent cost, time, tool errors, repeated failures and possible loops. Run as /agenttrace [latest|sessions|failures|costs|weekly].
-argument-hint: "[latest | sessions | failures | costs | weekly]"
+description: Explain a local Claude Code or Codex coding session with the AgentTrace MCP tools - tokens, estimated API-equivalent cost, time, tool errors, repeated failures and possible loops. Run as /agenttrace [sessions|latest|failures|costs|weekly|<session id>].
+argument-hint: "[latest | sessions | failures | costs | weekly | <session id>]"
 disable-model-invocation: true
 allowed-tools: mcp__agenttrace__list_sessions mcp__agenttrace__analyze_session mcp__agenttrace__get_failures mcp__agenttrace__cost_summary mcp__plugin_agenttrace_agenttrace__list_sessions mcp__plugin_agenttrace_agenttrace__analyze_session mcp__plugin_agenttrace_agenttrace__get_failures mcp__plugin_agenttrace_agenttrace__cost_summary
 ---
@@ -35,9 +35,9 @@ Read the first word of `$ARGUMENTS`, ignoring case. Ignore any further words.
 
 | Action | Do this |
 |---|---|
-| (empty) | `analyze_session` with `latest: true`. Give a short report: the highlight, usage, time and problems sections only. |
+| (empty) | `list_sessions` with `limit: 10`. Show a table: id, project folder, start, measured duration, tool calls, failed calls, findings. Leave out the newest row if it is likely the session you are running in. Then ask one line: "Which session? Run `/agenttrace <id>`." Do not analyse anything yet. |
 | `latest` | `analyze_session` with `latest: true`. If it reports findings, also call `get_failures` with `latest: true`. Give the full report. |
-| `sessions` | `list_sessions` with `limit: 10`. Show a table: id, project folder, start, measured duration, tool calls, failed calls, findings, estimated cost. Say that `/agenttrace latest` analyses the newest one. |
+| `sessions` | `list_sessions` with `limit: 10`. Show a table: id, project folder, start, measured duration, tool calls, failed calls, findings, estimated cost. Say that `/agenttrace <id>` analyses one of them and `/agenttrace latest` analyses the newest. |
 | `failures` | `get_failures` with `latest: true`. Describe each finding and its evidence items (timestamp, tool, status, exit code, error class). If there are none, say so. |
 | `costs` | `cost_summary` with `group_by: "model"`. Show tokens and estimated cost per model plus the total. |
 | `weekly` | Work out the date 7 days before today (UTC, `YYYY-MM-DD`). Call `cost_summary` with `since` set to it and `group_by: "model"`. Call `cost_summary` again with `group_by: "day"` for activity. Call `list_sessions` with `limit: 100` and count the sessions that started on or after that date. Say that per-day output has tokens only, with no per-day cost. |
@@ -54,7 +54,7 @@ Use these sections in this order, short and in plain language. Skip a section th
 4. **Agent activity**: tool calls, failed calls, and the most-used tools.
 5. **Problems**: repeated failures and possible loops, each with its evidence.
 6. **What this means**: two or three sentences of practical explanation.
-7. **Suggested next step**: only if the tools returned findings. Point to a factual follow-up such as `/agenttrace failures`. Do not give advice on how to fix anything. Do not suggest `CLAUDE.md` rules or prompt changes.
+7. **Suggested next step**: only if the tools returned findings. Point to a factual follow-up such as `/agenttrace failures <id>`, using the analysed session's id. Do not give advice on how to fix anything. Do not suggest `CLAUDE.md` rules or prompt changes.
 
 ## Labels
 

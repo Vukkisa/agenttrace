@@ -18,7 +18,7 @@ Everything runs offline. Nothing is uploaded, no LLM is used, no API key is need
 
 ![Example terminal output (synthetic data)](docs/demo-terminal.png)
 
-*Terminal output for the same synthetic session: tokens and cost per model, tool failures, and a repeated-failure finding with its evidence.*
+*Terminal output for the same synthetic session: duration, estimated cost, failures by type, and a repeated-failure finding.*
 
 ## Features
 
@@ -251,6 +251,8 @@ agenttrace analyze --latest --pricing my-prices.json
 `~/.agenttrace/pricing.json` is also read automatically if it exists (AgentTrace never creates it).
 
 ## Privacy
+
+Full policy: [PRIVACY.md](PRIVACY.md).
 
 - Logs are opened **read-only**. AgentTrace never writes to `~/.claude`, `~/.codex`, repositories or agent configuration.
 - No network access, no telemetry, no LLM calls, no credentials required.

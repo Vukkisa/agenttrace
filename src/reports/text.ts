@@ -56,7 +56,8 @@ export function renderSessionText(a: SessionAnalysis): string {
   }
   L.push('');
   L.push(`TOOLS: ${a.tools.total} calls, ${a.tools.failed} failed, ${a.tools.interrupted} interrupted`);
-  for (const t of a.tools.byTool.slice(0, 12)) L.push(`  ${t.tool.padEnd(28)} ${String(t.calls).padStart(5)} calls  ${t.errors ? t.errors + ' failed' : ''}`);
+  for (const t of a.tools.byTool.slice(0, 12)) L.push(`  ${t.tool.padEnd(28)} ${String(t.calls).padStart(5)} ${t.calls === 1 ? 'call ' : 'calls'}  ${t.errors ? t.errors + ' failed' : ''}`);
+  if (a.tools.failuresByType.length) L.push(`  Failures by type: ${a.tools.failuresByType.map(f => `${f.type} ${f.count}`).join(' · ')}`);
   L.push('');
   L.push('FINDINGS');
   if (!a.findings.length && !a.loops.length) L.push(`  None met the threshold (${a.config.threshold}).`);

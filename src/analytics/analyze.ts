@@ -34,7 +34,7 @@ export interface SessionAnalysis {
   tokens: TokenSummary;
   cost: CostSummary;
   timing: TimingSummary;
-  tools: { total: number; failed: number; interrupted: number; byTool: ToolStats[] };
+  tools: { total: number; failed: number; interrupted: number; byTool: ToolStats[]; failuresByType: { type: string; count: number }[] };
   failedCalls: EvidenceItem[];
   findings: Finding[];
   loops: Finding[];
@@ -123,6 +123,9 @@ export function analyzeSession(s: NormalizedSession, pricing: PricingTable, cfg:
   }
   const byTool = [...byToolMap.values()].sort((a, b) => b.calls - a.calls);
   const failed = s.toolCalls.filter(c => c.status === 'error');
+  const typeMap = new Map<string, number>();
+  for (const c of failed) typeMap.set(c.errorClass ?? 'other', (typeMap.get(c.errorClass ?? 'other') ?? 0) + 1);
+  const failuresByType = [...typeMap].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
 
   const intervals: [number, number][] = [...findings, ...loops]
     .filter(f => f.kind !== 'repeated-read' && f.kind !== 'similar-errors')
@@ -141,7 +144,7 @@ export function analyzeSession(s: NormalizedSession, pricing: PricingTable, cfg:
   const base: Omit<SessionAnalysis, 'diagnosis'> = {
     agent: s.agent, sessionId: s.sessionId, projectDir: s.projectDir, gitBranch: s.gitBranch, cliVersion: s.cliVersion,
     models: s.models, files: s.files, tokens, cost, timing,
-    tools: { total: s.toolCalls.length, failed: failed.length, interrupted: s.toolCalls.filter(c => c.status === 'interrupted').length, byTool },
+    tools: { total: s.toolCalls.length, failed: failed.length, interrupted: s.toolCalls.filter(c => c.status === 'interrupted').length, byTool, failuresByType },
     failedCalls: failed.slice(0, 200).map(c => evidenceOf(c, config)),
     findings, loops, waste,
     counts: {

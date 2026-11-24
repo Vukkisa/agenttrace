@@ -51,7 +51,7 @@ Use these sections in this order, short and in plain language. Skip a section th
 1. **Session highlight**: the single most important fact, in one sentence.
 2. **Usage**: model, input, output and cache tokens, and the estimated API-equivalent cost.
 3. **Time**: observed duration (Measured), estimated active time (Estimated), and how many long pauses (Estimated, because it depends on the pause threshold).
-4. **Agent activity**: tool calls, failed calls, and the most-used tools.
+4. **Agent activity**: tool calls, failed calls, the most-used tools, and failures by type (`failuresByType`) when present, as counts only.
 5. **Problems**: repeated failures and possible loops, each with its evidence.
 6. **What this means**: two or three sentences of practical explanation.
 7. **Suggested next step**: only if the tools returned findings. Point to a factual follow-up such as `/agenttrace failures <id>`, using the analysed session's id. Do not give advice on how to fix anything. Do not suggest `CLAUDE.md` rules or prompt changes.

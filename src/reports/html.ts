@@ -124,6 +124,8 @@ export function renderSessionHtml(a: SessionAnalysis, opts: { generatedAt?: Date
   const maxCat = Math.max(1, ...cats.map(([, v]) => v));
   const catBars = cats.map(([k, v]) => bar(k, v, maxCat, formatDuration(v))).join('');
   const toolTimeRows = a.timing.toolTimes.slice(0, 15).map(t => `<tr><td>${esc(t.tool)}</td><td class="num">${t.calls}</td><td class="num">${t.measuredCalls ? esc(formatDuration(t.measuredMs)) + ` <span class="muted">(${t.measuredCalls})</span>` : '—'}</td><td class="num">${t.logIntervalCalls ? esc(formatDuration(t.logIntervalMs)) + ` <span class="muted">(${t.logIntervalCalls})</span>` : '—'}</td></tr>`).join('');
+  const maxType = Math.max(0, ...a.tools.failuresByType.map(x => x.count));
+  const typeBars = a.tools.failuresByType.map(t => bar(t.type, t.count, maxType, `${t.count} failed`, 'err')).join('');
   const failedRows = a.failedCalls.slice(0, 50).map(e => `<tr><td>${esc(tm(e.timestamp))}</td><td>${esc(e.tool)}</td><td class="code">${esc(e.input)}</td><td>${e.exitCode !== undefined ? esc(e.exitCode) : '—'}</td><td>${esc(e.errorClass ?? '')}${e.errorSnippet ? `<div class="snip">${esc(e.errorSnippet)}</div>` : ''}</td></tr>`).join('');
   const failures = a.findings.filter(f => f.kind !== 'repeated-read');
   const reads = a.findings.filter(f => f.kind === 'repeated-read');
@@ -175,6 +177,7 @@ ${a.tokens.total.reasoning ? `<p class="note">Reasoning/thinking tokens (already
 <section><h2>Failure analysis</h2>
 ${failures.length ? failures.map(findingCard).join('') : `<p class="muted">No repeated failures met the threshold (${a.config.threshold}).</p>`}
 ${failBars ? `<h3>Failed calls by tool</h3>${failBars}` : ''}
+${typeBars ? `<h3>Failed calls by type</h3>${typeBars}` : ''}
 ${failedRows ? `<details><summary>All failed tool calls (${a.failedCalls.length})</summary><div class="tablewrap"><table><thead><tr><th>Time</th><th>Tool</th><th>Input (redacted)</th><th>Exit</th><th>Error class</th></tr></thead><tbody>${failedRows}</tbody></table></div></details>` : ''}
 </section>
 

@@ -178,6 +178,7 @@ export function analysisOut(a: SessionAnalysis) {
     cost: costOut(a.cost),
     tools: {
       total: a.tools.total, failed: a.tools.failed, interrupted: a.tools.interrupted,
+      failuresByType: a.tools.failuresByType.slice(0, LIMITS.groups),
       byTool: a.tools.byTool.slice(0, LIMITS.groups).map(t => ({ tool: t.tool, calls: t.calls, errors: t.errors, interrupted: t.interrupted })),
     },
     counts: a.counts,

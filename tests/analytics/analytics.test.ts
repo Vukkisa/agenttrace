@@ -408,3 +408,17 @@ describe('cross-session de-duplication', () => {
     expect(res.usage.every(r => typeof r.messageId === 'string' && r.messageId.startsWith('msg_'))).toBe(true);
   });
 });
+
+describe('failures by type', () => {
+  const call = (i: number, cls?: string): ToolCall => ({
+    id: 'f' + i, name: 'Bash', timestamp: new Date(Date.UTC(2026, 0, 1, 0, i)), status: 'error', errorClass: cls,
+    errorSignature: 's' + i, inputKey: 'k' + i, inputSummary: 'x', command: 'x',
+  });
+  it('counts failed calls by errorClass, sorted, and sums to failed', () => {
+    const calls = [call(1, 'test-failure'), call(2, 'not-found'), call(3, 'test-failure'), call(4), call(5, 'not-found'), call(6, 'test-failure')];
+    const s: NormalizedSession = { agent: 'claude-code', sessionId: 's', files: [], models: [], usage: [], usageAvailable: false, toolCalls: calls, boundaries: [], eventTimes: [], apiErrors: 0, interruptions: 0, diagnostics: [] };
+    const a = analyzeSession(s, loadPricing());
+    expect(a.tools.failuresByType).toEqual([{ type: 'test-failure', count: 3 }, { type: 'not-found', count: 2 }, { type: 'other', count: 1 }]);
+    expect(a.tools.failuresByType.reduce((n, f) => n + f.count, 0)).toBe(a.tools.failed);
+  });
+});
